@@ -164,9 +164,3 @@ def filter_dominated_plans(G, plans, obj_type):
             nondominated_plans.append(plan1)
     
     return nondominated_plans
-
-
-
-
-
-
