@@ -322,5 +322,3 @@ def add_symmetry_breaking_constraints(m, G):
                 m.addConstrs(rsum[i, j] == rsum[previous_node, j] + m._r[i, j] for j in range(len(m._sizes)))
     m.update()
     return
-
-
