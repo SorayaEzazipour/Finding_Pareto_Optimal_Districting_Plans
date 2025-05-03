@@ -7,11 +7,9 @@ Created on Mon Sep  9 12:15:07 2024
 
 from metrics import*
 from mip import*
-from bipartitions import*
 from math import ceil, floor
 import random
 from heuristic import*
-from collections import defaultdict
 from optimization import iterative_refinement
 
 
@@ -96,8 +94,7 @@ def randomized_epsilon_constraint_method(G, obj_type='bottleneck_Polsby_Popper',
             contiguity=contiguity, cutoff=cutoff, verbose=verbose,
             warm_start=warm_start, time_limit=time_limit, sizes=sizes,
             multiplier=multiplier, max_B=max_B,
-            symmetry_breaking=symmetry_breaking, similarity=similarity,
-            bipartitions=bipartitions)
+            symmetry_breaking=symmetry_breaking, similarity=similarity)
 
         if plan is None:
             print(f"\n{'*' * 40}\nNo feasible solution found! Gurobi status: {status}\n{'*' * 40}")
@@ -127,6 +124,7 @@ def randomized_epsilon_constraint_method(G, obj_type='bottleneck_Polsby_Popper',
     nondominated_obj_bounds = [obj_bounds[i] for i in indices]
 
     return nondominated_plans, nondominated_obj_bounds, nondominated_deviations
+
 #############################  Standard  epsilon_constraint_method    ####################################
 #############################  Standard  epsilon_constraint_method  ####################################
 
