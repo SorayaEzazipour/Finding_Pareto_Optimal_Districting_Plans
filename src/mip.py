@@ -60,7 +60,7 @@ def gurobi_status(s):
 def labeling_model(
                   G, deviation_persons, obj_type, contiguity='lcut', cutoff=None, verbose=False,
                    warm_start=None, time_limit=7200, sizes=None, multiplier=0, max_B=False,
-                   symmetry_breaking=None, similarity=None, bipartitions=None):
+                   symmetry_breaking=None, similarity=None):
     
     G._L = math.ceil(G._ideal_population - deviation_persons)
     G._U = math.floor(G._ideal_population + deviation_persons)
@@ -185,100 +185,6 @@ def labeling_model(
     if similarity is not None:
         m.addConstr(gp.quicksum(G.nodes[i]["TOTPOP2000"] * m._x[i, j] 
                         for j in range(G._k) for i in similarity[0][j]) >= similarity[1])
-        
-    #add bipartions constraints
-    # if bipartitions:
-    #     B = bipartitions
-    #     m._z = m.addVars(len(B), name='z', vtype=GRB.BINARY)
-        
-    #     m.addConstrs(
-    #         gp.quicksum(m._x[i, j] for j in range(2)) == 
-    #         gp.quicksum(m._z[p] for p in range(len(B)) if i in B[p][0])
-    #         for i in G.nodes 
-    #         )
-
-    #     m.addConstrs(
-    #         gp.quicksum(m._x[i, j] for j in range(2, k)) == 
-    #         gp.quicksum(m._z[p] for p in range(len(B)) if i in B[p][1])
-    #         for i in G.nodes 
-    #         )
-
-    #     m.addConstr(gp.quicksum(m._z[p] for p in range(len(B))) == 1)
-        
-    #     #branch priority
-    #     for p in range(len(B)):
-    #         m._z[p].branchPriority = 1
-            
-    #     # break the symmetry
-    #     always_left = [ i for i in G.nodes if all( i in bipartitions[p][0] for p in range(len(B)) ) ]
-    #     mp0 = max( G.nodes[i]['TOTPOP'] for i in always_left )
-    #     root0 = [ i for i in always_left if G.nodes[i]['TOTPOP'] == mp0 ][0]
-    #     m._x[root0,0].LB = 1
-        
-    #     always_right = [ i for i in G.nodes if all( i in bipartitions[p][1] for p in range(len(B)) ) ]
-    #     mp2 = max( G.nodes[i]['TOTPOP'] for i in always_right )
-    #     root2 = [ i for i in always_right if G.nodes[i]['TOTPOP'] == mp2 ][0]
-    #     m._x[root2,2].LB = 1
-    
-    if bipartitions:
-        B = bipartitions
-        range_indices_B = range(len(B))
-    
-        # Dictionary to map nodes to bipartitions for O(1) lookup
-        node_to_bipartitions = {i: [] for i in G.nodes}
-        for p in range_indices_B:
-            for node in B[p][0]:
-                node_to_bipartitions[node].append(p)
-            for node in B[p][1]:
-                node_to_bipartitions[node].append(p)
-    
-        m._z = m.addVars(len(B), name='z', vtype=GRB.BINARY)
-    
-        # Add constraints linking nodes to bipartitions (will add lazily)
-        def add_lazy_constraints(m, where):
-            if where == GRB.Callback.MIPSOL:
-                for i in G.nodes:
-                    left_bipartitions = [p for p in node_to_bipartitions[i] if i in B[p][0]]
-                    right_bipartitions = [p for p in node_to_bipartitions[i] if i in B[p][1]]
-    
-                    left_side_sum = gp.quicksum(m._z[p] for p in left_bipartitions)
-                    right_side_sum = gp.quicksum(m._z[p] for p in right_bipartitions)
-    
-                    m.cbLazy(gp.quicksum(m._x[i, j] for j in range(2)) == left_side_sum)
-                    m.cbLazy(gp.quicksum(m._x[i, j] for j in range(2, k)) == right_side_sum)
-    
-        # Ensure exactly one bipartition is selected
-        m.addConstr(gp.quicksum(m._z[p] for p in range_indices_B) == 1)
-    
-        # Find the most populated node on each side in one pass
-        max_pop_left, max_pop_right = None, None
-        max_pop_left_val, max_pop_right_val = -1, -1
-    
-        for i in G.nodes:
-            pop = G.nodes[i]['TOTPOP']
-            in_all_left = all(i in B[p][0] for p in range_indices_B)
-            in_all_right = all(i in B[p][1] for p in range_indices_B)
-    
-            if in_all_left and pop > max_pop_left_val:
-                max_pop_left, max_pop_left_val = i, pop
-            if in_all_right and pop > max_pop_right_val:
-                max_pop_right, max_pop_right_val = i, pop
-    
-        # Apply symmetry-breaking constraints
-        if max_pop_left is not None:
-            m._x[max_pop_left, 0].LB = 1
-    
-        if max_pop_right is not None:
-            m._x[max_pop_right, 2].LB = 1
-    
-        m.setParam("Presolve", 2)   # Aggressive presolve
-        m.setParam("Symmetry", 2)   # Advanced symmetry detection
-        m.setParam('MIPFocus', 1)
-        
-        
-        # Set callback for lazy constraints
-        m.Params.LazyConstraints = 1
-        m._callback = add_lazy_constraints 
   
     # for i in G.nodes:
     #     for j in range(k):
