@@ -23,9 +23,9 @@
 
 
 
-import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+import numpy as np
 
 class ParetoFrontier:
     def __init__(self, senses, obj_names=None, state='IA', level='county'):
@@ -249,18 +249,11 @@ class ParetoFrontier:
             ax.legend(loc='best')
         
         
-        # sorted_indices = np.argsort([p[0] for p in self.upper_bounds])
-        # sorted_points = [self.upper_bounds[i] for i in sorted_indices]
-        # sorted_lower_bounds = [self.lower_bounds[i] for i in sorted_indices]
-        
-        # Extension amount for the last point's horizontal line
-        extension = 0.2
-        
         # Get the rightmost x-coordinate to determine the end of the last horizontal line
         if o1lim is not None:
             rightmost_x = o1lim[1]
         else:
-            rightmost_x = self.upper_bounds[-1][0] + extension
+            rightmost_x =(1.1) * self.upper_bounds[-1][0] 
         for i in range(len(self.upper_bounds)):
             current_dev = self.upper_bounds[i][0]
             current_upper = self.upper_bounds[i][1]
@@ -275,11 +268,10 @@ class ParetoFrontier:
             else:
                 next_dev = current_dev + 0.2
         
-            rect_width = next_dev - current_dev
-            rect_height = current_upper - current_lower
+            rect_width = round(next_dev - current_dev,2)
+            rect_height = round(current_upper - current_lower,2)
         
             if rect_height > 0: 
-                
                 # Plot gap box only
                 rect = patches.Rectangle(
                     (current_dev, current_lower),
@@ -287,7 +279,7 @@ class ParetoFrontier:
                     rect_height,
                     color='r',
                     alpha=0.3,
-                    linewidth=0
+                    linewidth=5
                 )
                 ax.add_patch(rect)
         
@@ -313,6 +305,88 @@ class ParetoFrontier:
     
         plt.tight_layout()
         plt.show()
+        
+    def plot_with_custom_x_ranges(self, splits=None):
+        if len(self.upper_bounds) == 0:
+            print("No points in the Pareto frontier.")
+            return
+    
+        # Handle default: no split
+        if splits is None:
+            self.plot_with_gap_box()
+        else:
+            splits = sorted(splits)
+            figsize = (5 * (len(splits) + 1), 5)
+        
+            num_panels = len(splits) + 1
+            fig, axes = plt.subplots(1, num_panels, figsize=figsize, sharey=True)
+            fig.suptitle("Restricted Value Function (estimated)")
+            
+            if num_panels == 1:
+                axes = [axes]
+        
+            rightmost_x = max(p[0] for p in self.upper_bounds)
+            last_points = [None] * num_panels
+            first_points = [None] * num_panels
+        
+            for i in range(len(self.upper_bounds)):
+                current_dev = self.upper_bounds[i][0]
+                current_upper = self.upper_bounds[i][1]
+                current_lower = self.lower_bounds[i][1] if self.lower_bounds[i] is not None else current_upper
+        
+                next_dev = self.upper_bounds[i + 1][0] if i < len(self.upper_bounds) - 1 else current_dev + 0.2
+        
+                rect_width = round(next_dev - current_dev, 2)
+                rect_height = round(current_upper - current_lower, 2)
+        
+                for j, threshold in enumerate(splits):
+                    if current_dev < threshold:
+                        panel_index = j
+                        break
+                else:
+                    panel_index = num_panels - 1
+        
+                ax = axes[panel_index]
+        
+                if first_points[panel_index] is None:
+                    first_points[panel_index] = (current_dev, current_upper)
+                last_points[panel_index] = (current_dev, current_upper)
+        
+                if rect_height > 0:
+                    rect = patches.Rectangle((current_dev, current_lower), rect_width, rect_height, color='r', alpha=0.3)
+                    ax.add_patch(rect)
+                else:
+                    ax.plot(current_dev, current_upper, 'bo', markersize=6)
+                    next_panel = next((jj for jj, t in enumerate(splits) if next_dev < t), num_panels - 1)
+                    if panel_index == next_panel:
+                        ax.plot([current_dev, next_dev], [current_upper, current_upper], 'b-', linewidth=1.5)
+                        ax.plot(next_dev, current_upper, 'bo', markerfacecolor='white', markersize=6)
+                    else:
+                        ax.plot([current_dev, rightmost_x], [current_upper, current_upper], 'b-', linewidth=1.5)
+        
+            for i in range(num_panels - 1):
+                if last_points[i] and first_points[i + 1]:
+                    axes[i + 1].plot([last_points[i][0], first_points[i + 1][0]],
+                                     [last_points[i][1], last_points[i][1]], 'b-', linewidth=1.2)
+                    axes[i + 1].plot(first_points[i + 1][0], last_points[i][1], 'bo', markerfacecolor='white', markersize=6)
+        
+            if last_points[-1]:
+                axes[-1].plot([last_points[-1][0], 1.05 * rightmost_x],
+                              [last_points[-1][1], last_points[-1][1]], 'b-', linewidth=1.5)
+        
+            lower_bounds = [0] + splits
+            upper_bounds = splits + [1.05 * rightmost_x]
+            for i, ax in enumerate(axes):
+                ax.set_xlim(lower_bounds[i], upper_bounds[i])
+                ax.set_xlabel(self.obj_names[0])
+                ax.grid(True, linestyle='--', alpha=0.7, color='lightgray')
+        
+            axes[0].set_ylabel(self.obj_names[1])
+        
+            plt.tight_layout()
+            plt.subplots_adjust(wspace=0.1)
+            plt.show()
+
     
     def plot_with_dominance(self, frontiers, labels, colors, markers):
         if len(self.upper_bounds) == 0:
