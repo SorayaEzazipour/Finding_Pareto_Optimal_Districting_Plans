@@ -304,7 +304,7 @@ class ParetoFrontier:
         plt.ylabel(self.obj_names[1])
         plt.title('Restricted Value Function (estimated)')
         
-        ax.set_ylim(min(self.upper_bounds[1])-10,max(self.upper_bounds[1])+2)
+        ax.set_ylim(min(self.lower_bounds[1])*0.9,max(self.upper_bounds[1])+10) 
         yticks = ax.get_yticks()  
         if len(yticks) >= 2:
             labels = [str(int(y)) for y in yticks]
@@ -420,7 +420,7 @@ class ParetoFrontier:
     
             ax.set_xlabel(self.obj_names[0])
             ax.grid(True, linestyle='--', alpha=0.7, color='lightgray')
-        axes[0].set_ylim(min(self.upper_bounds[1])-10,max(self.upper_bounds[1])+2)    
+        axes[0].set_ylim(min(self.lower_bounds[1])*0.9,max(self.upper_bounds[1])+10)    
         for ax in axes:
             yticks = ax.get_yticks()  
             if len(yticks) >= 2:
