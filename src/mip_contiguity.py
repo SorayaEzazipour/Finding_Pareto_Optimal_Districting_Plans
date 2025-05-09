@@ -69,7 +69,7 @@ def lcut_callback(m, where):
 
 
 def find_fischetti_separator(G, component, b):
-    neighbors_component = [ False for i in G.nodes ]
+    neighbors_component = { i : False for i in G.nodes }
     for i in nx.node_boundary(G, component, None):
         neighbors_component[i] = True
     
