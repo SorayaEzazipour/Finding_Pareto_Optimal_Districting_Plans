@@ -68,6 +68,10 @@ def lcut_callback(m, where):
     return
 
 
+# This is algorithm 1 from Fischetti, Matteo, et al. 
+#   "Thinning out Steiner trees: a node-based model for uniform edge costs." 
+#   Mathematical Programming Computation 9.2 (2017): 203-229.
+#
 def find_fischetti_separator(G, component, b):
     neighbors_component = { i : False for i in G.nodes }
     for i in nx.node_boundary(G, component, None):
