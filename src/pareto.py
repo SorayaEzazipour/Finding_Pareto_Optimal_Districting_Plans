@@ -121,7 +121,7 @@ class ParetoFrontier:
 
         return max_deviation, min_deviation, max_objective, min_objective
     
-    def plot(self, o1lim=None, o2lim=None, infeasible_region=None, extra_points=None, extra_colors=None):
+    def plot(self, method = 'epsilon_constraint_method', o1lim=None, o2lim=None, infeasible_region=None, extra_points=None, extra_colors=None):
         
         if len(self.upper_bounds) == 0:
             print("No points in the Pareto frontier.")
@@ -194,7 +194,10 @@ class ParetoFrontier:
 
         plt.xlabel(self.obj_names[0])
         plt.ylabel(self.obj_names[1])
-        plt.title('Restricted Value Function (estimated)')
+        if method == 'epsilon_constraint_method':
+            plt.title('Restricted Value Function')
+        else:
+            plt.title('Restricted Value Function (estimated)')
 
         if o1lim is not None:
             ax.set_xlim(*o1lim)
@@ -204,25 +207,22 @@ class ParetoFrontier:
         plt.tight_layout()
         plt.show()
         
-    def plot_with_gap_box(self, o1lim=None, o2lim=None, infeasible_region=None, extra_points=None, extra_colors=None):
-        
+    def plot_with_gap_box(self, method='epsilon_constraint_method', o1lim=None, o2lim=None, infeasible_region=None, extra_points=None, extra_colors=None):
         if len(self.upper_bounds) == 0:
             print("No points in the Pareto frontier.")
             return
     
         fig, ax = plt.subplots(figsize=(9, 5))
-    
-        ax.grid(True, linestyle='--', alpha=0.7, color='lightgray')
-        
+        ax.grid(True, linestyle='--', alpha=0.7, color='lightgray')     
         max_deviation, min_deviation, max_objective, min_objective = self.calculate_limits()
-        points = np.array(self.upper_bounds)
     
-        # Plot infeasible region if provided
+        if o1lim is None:
+            o1lim = [min_deviation - 0.05 * max_deviation, max_deviation + 0.05 * max_deviation]
+        if o2lim is None:
+            o2lim = [min_objective - 1, max_objective + 1]
+
+        points = np.array(self.upper_bounds)
         if infeasible_region is not None:
-            if o1lim is None:
-                o1lim = [min_deviation - 0.5, max_deviation + 0.5]
-            if o2lim is None:
-                o2lim = [min_objective - 1, max_objective + 1]
             ax.fill_betweenx(
                 y=[o2lim[0], o2lim[1]],
                 x1=infeasible_region[0],
@@ -233,8 +233,7 @@ class ParetoFrontier:
                 edgecolor='red',
                 linewidth=0.5,
             )
-            
-        # Plot any additional points
+    
         if extra_points:
             for i, ep in enumerate(extra_points):
                 deviation, objective_value, label = ep
@@ -248,35 +247,22 @@ class ParetoFrontier:
                     label=label,
                 )
             ax.legend(loc='best')
-        
-        
-        # Get the rightmost x-coordinate to determine the end of the last horizontal line
-        if o1lim is not None:
-            rightmost_x = o1lim[1]
-        else:
-            rightmost_x =(1.1) * self.upper_bounds[-1][0] 
+    
+        rightmost_x = max(max(p[0] for p in self.upper_bounds), o1lim[1])
+    
         for i in range(len(self.upper_bounds)):
             current_dev = self.upper_bounds[i][0]
-            if i == 0 and current_dev !=0:
-                current_dev = 0
             current_upper = self.upper_bounds[i][1]
-        
-            if self.lower_bounds[i] is None:
-                current_lower = current_upper
-            else:
-                current_lower = self.lower_bounds[i][1]
-        
-            if i < len(self.upper_bounds) - 1:
-                next_dev = self.upper_bounds[i + 1][0]
-            else:
-                next_dev = current_dev + 0.2
-        
-            rect_width = round(next_dev - current_dev,2)
-            rect_height = round(current_upper - current_lower,2)
-        
-            if rect_height > 0: 
-                
-                # Plot gap box only
+            current_lower = self.lower_bounds[i][1] if self.lower_bounds[i] is not None else current_upper
+    
+            if i == 0 and current_dev != 0:
+                current_dev = 0
+    
+            next_dev = self.upper_bounds[i + 1][0] if i < len(self.upper_bounds) - 1 else current_dev + 0.2
+            rect_width = round(next_dev - current_dev, 2)
+            rect_height = round(current_upper - current_lower, 2)
+    
+            if rect_height > 0:
                 rect = patches.Rectangle(
                     (current_dev, current_lower),
                     rect_width,
@@ -286,42 +272,51 @@ class ParetoFrontier:
                     linewidth=1
                 )
                 ax.add_patch(rect)
-        
             else:
-                
-                # No uncertainty(draw horizontal segment with open and closed circles)
-                ax.plot(current_dev, current_upper, 'bo', markersize=6)  
-        
+                ax.plot(current_dev, current_upper, 'bo', markersize=6)
+    
                 if i < len(self.upper_bounds) - 1:
                     ax.plot([current_dev, next_dev], [current_upper, current_upper], 'b-', linewidth=1.5)
                     ax.plot(next_dev, current_upper, 'bo', markerfacecolor='white', markersize=6)  # Open circle
                 else:
                     ax.plot([current_dev, rightmost_x], [current_upper, current_upper], 'b-', linewidth=1.5)
-            
-
     
         plt.xlabel(self.obj_names[0])
         plt.ylabel(self.obj_names[1])
-        plt.title('Restricted Value Function (estimated)')
-        
-        ax.set_ylim(min(self.lower_bounds[1])*0.9,max(self.upper_bounds[1])+10) 
-        yticks = ax.get_yticks()  
+        if method == 'epsilon_constraint_method':
+            plt.title('Restricted Value Function')
+        else:
+            plt.title('Restricted Value Function (estimated)')
+    
+        ax.set_xlim(o1lim)
+        y_min = min(lb[1] for lb in self.lower_bounds if lb is not None) * 0.95
+        y_max = max(ub[1] for ub in self.upper_bounds) * 1.05
+        ax.set_ylim(y_min, y_max)
+    
+        yticks = ax.get_yticks()
         if len(yticks) >= 2:
-            labels = [str(int(y)) for y in yticks]
-            labels[-1] = r"$\infty$" 
-            ax.set_yticks(yticks)
-            ax.set_yticklabels(labels)
-    
-        if o1lim is not None:
-            ax.set_xlim(*o1lim)
-        if o2lim is not None:
-            ax.set_ylim(*o2lim)
-    
+            y_min, y_max = ax.get_ylim()
+            y_range = (y_max - y_min)/len(yticks)
+            new_last_tick = y_max + y_range  
+        
+           
+            yticks[-1] = new_last_tick
+            labels = []
+        
+            for y in yticks:
+                if abs(y) < 1:
+                    labels.append(f"{y:.2f}")  
+                else:
+                    labels.append(str(int(y)))  
+        ax.set_yticks(yticks)
+        ax.set_yticklabels(labels)
+            
         plt.tight_layout()
         plt.show()
+
         
       
-    def plot_with_custom_x_ranges(self, splits=None, o1lim=None, o2lim=None, infeasible_region=None, extra_points=None, extra_colors=None):
+    def plot_with_custom_x_ranges(self, method='epsilon_constraint_method', splits=None, o1lim=None, o2lim=None, infeasible_region=None, extra_points=None, extra_colors=None):
         if len(self.upper_bounds) == 0:
             print("No points in the Pareto frontier.")
             return
@@ -334,26 +329,28 @@ class ParetoFrontier:
         figsize = (5 * (len(splits) + 1), 5)
         num_panels = len(splits) + 1
         fig, axes = plt.subplots(1, num_panels, figsize=figsize, sharey=True)
-        fig.suptitle("Restricted Value Function (estimated)")
+    
+        if method == 'epsilon_constraint_method':
+            fig.suptitle("Restricted Value Function")
+        else:
+            fig.suptitle("Restricted Value Function (estimated)")
     
         if num_panels == 1:
             axes = [axes]
-    
-        rightmost_x = max(max(p[0] for p in self.upper_bounds),
+        rightmost_x = max(max(p[0] for p in self.upper_bounds), 
                           max((pt[0] for pt in extra_points), default=0) if extra_points else 0)
+    
         last_points = [None] * num_panels
         first_points = [None] * num_panels
-    
     
         for i in range(len(self.upper_bounds)):
             current_dev = self.upper_bounds[i][0]
             current_upper = self.upper_bounds[i][1]
             if i == 0 and current_dev != 0:
-                current_dev = 0   
+                current_dev = 0
             current_lower = self.lower_bounds[i][1] if self.lower_bounds[i] is not None else current_upper
     
             next_dev = self.upper_bounds[i + 1][0] if i < len(self.upper_bounds) - 1 else current_dev + 0.2
-    
             rect_width = round(next_dev - current_dev, 2)
             rect_height = round(current_upper - current_lower, 2)
     
@@ -388,14 +385,11 @@ class ParetoFrontier:
                                  [last_points[i][1], last_points[i][1]], 'b-', linewidth=1.2)
                 axes[i + 1].plot(first_points[i + 1][0], last_points[i][1], 'bo', markerfacecolor='white', markersize=6)
     
-        if last_points[-1]:
-            axes[-1].plot([last_points[-1][0], 1.05 * rightmost_x],
-                          [last_points[-1][1], last_points[-1][1]], 'b-', linewidth=1.5)
-            ax.plot(current_dev, current_upper, 'bo', markersize=6)
-            
-    
-        lower_bounds = [0] + splits
+        lower_bounds = [-0.01 * rightmost_x] + splits
         upper_bounds = splits + [1.05 * rightmost_x]
+    
+        y_min = min(min(lb[1] for lb in self.lower_bounds if lb), min(ub[1] for ub in self.upper_bounds)) * 0.95
+        y_max = max(max(ub[1] for ub in self.upper_bounds), max(lb[1] for lb in self.lower_bounds if lb)) * 1.05
     
         for i, ax in enumerate(axes):
             ax.set_xlim(lower_bounds[i], upper_bounds[i])
@@ -403,31 +397,41 @@ class ParetoFrontier:
                 ax.set_xlim(o1lim)
             if o2lim:
                 ax.set_ylim(o2lim)
+            else:
+                ax.set_ylim(y_min, y_max)
     
             if infeasible_region:
                 ax.axhspan(infeasible_region[0], infeasible_region[1], facecolor='gray', alpha=0.2)
     
             if extra_points:
                 for idx, pt in enumerate(extra_points):
-                    if len(pt) == 3:
-                        x, y, label = pt
-                    else:
-                        x, y = pt
-                        label = None
+                    x, y = pt[:2]
+                    label = pt[2] if len(pt) == 3 else None
                     if lower_bounds[i] <= x <= upper_bounds[i]:
                         color = extra_colors[idx] if extra_colors and idx < len(extra_colors) else 'green'
                         ax.plot(x, y, 'o', color=color, label=label)
     
             ax.set_xlabel(self.obj_names[0])
             ax.grid(True, linestyle='--', alpha=0.7, color='lightgray')
-        axes[0].set_ylim(min(self.lower_bounds[1])*0.9,max(self.upper_bounds[1])+10)    
-        for ax in axes:
-            yticks = ax.get_yticks()  
+    
+            yticks = ax.get_yticks()
             if len(yticks) >= 2:
-                labels = [str(int(y)) for y in yticks]
-                labels[-1] = r"$\infty$" 
-                ax.set_yticks(yticks)
-                ax.set_yticklabels(labels)          
+                y_min, y_max = ax.get_ylim()
+                y_range = (y_max - y_min)/len(yticks)
+                new_last_tick = y_max + y_range  
+            
+               
+                yticks[-1] = new_last_tick
+                labels = []
+            
+                for y in yticks:
+                    if abs(y) < 1:
+                        labels.append(f"{y:.2f}")  
+                    else:
+                        labels.append(str(int(y)))  
+            ax.set_yticks(yticks)
+            ax.set_yticklabels(labels)
+
     
         axes[0].set_ylabel(self.obj_names[1])
         plt.tight_layout()

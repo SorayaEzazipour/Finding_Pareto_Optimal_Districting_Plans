@@ -60,7 +60,7 @@ def gurobi_status(s):
 def labeling_model(
                   G, deviation_persons, obj_type, contiguity='lcut', cutoff=None, verbose=False,
                    warm_start=None, time_limit=7200, sizes=None, multiplier=0, max_B=False,
-                   symmetry_breaking=None, similarity=None):
+                   symmetry_breaking=None,  similarity=None):
     
     G._L = math.ceil(G._ideal_population - deviation_persons)
     G._U = math.floor(G._ideal_population + deviation_persons)
@@ -138,7 +138,10 @@ def labeling_model(
     elif symmetry_breaking == 'orbitope' and  max_B: 
         add_partitioning_orbitope_constraints(m, DG)
         mip_fixing.do_variable_fixing(m, DG)
-    
+    if symmetry_breaking == 'rsum':
+        add_symmetry_breaking_constraints(m, DG)          
+        
+        
     if contiguity == 'lcut':
         if symmetry_breaking == None:
             

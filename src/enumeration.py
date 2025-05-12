@@ -8,33 +8,10 @@ Created on Sun May  4 16:03:13 2025
 import networkx as nx
 import gurobipy as gp
 from gurobipy import GRB
+from mip import*
+from metrics import check_plan
 import math
 
-# This is algorithm 1 from Fischetti, Matteo, et al. 
-#   "Thinning out Steiner trees: a node-based model for uniform edge costs." 
-#   Mathematical Programming Computation 9.2 (2017): 203-229.
-#
-def find_minimal_separator(DG, component, b):
-    neighbors_component = { i : False for i in DG.nodes }
-    for i in nx.node_boundary(DG, component, None):
-        neighbors_component[i] = True
-    
-    visited = { i : False for i in DG.nodes }
-    child = [b]
-    visited[b] = True
-    
-    while child:
-        parent = child
-        child = list()
-        for i in parent:
-            if not neighbors_component[i]:
-                for j in DG.neighbors(i):
-                    if not visited[j]:
-                        child.append(j)
-                        visited[j] = True
-    
-    C = [ i for i in DG.nodes if neighbors_component[i] and visited[i] ]
-    return C
 
 def callback_function(m, where):
     if where != GRB.Callback.MIPSOL: 
@@ -72,32 +49,7 @@ def callback_function(m, where):
         print("Enumeration limit has been reached. Exiting search.")
         m.cbLazy( m._x[root,1] >= 1 )
 
-def cut_callback (m , where):
-    if where != GRB.Callback.MIPSOL: 
-        return
-        
-    xval = m.cbGetSolution(m._x)
-    DG = m._DG
-    
-    second_district = [ i for i in DG.nodes if xval[i,1] > 0.5 ]
-    b = None
-    max_component_population = -1
-    for component in nx.strongly_connected_components( DG.subgraph(second_district) ):
-        component_population = sum( DG.nodes[i]['TOTPOP'] for i in component )
-        if component_population > max_component_population:
-            max_component_population = component_population
-            max_vertex_population = max( DG.nodes[i]['TOTPOP'] for i in component )
-            max_population_vertices = [ i for i in component if DG.nodes[i]['TOTPOP'] == max_vertex_population ]
-            b = max_population_vertices[0]
 
-    for component in nx.strongly_connected_components( DG.subgraph(second_district) ):
-        if b in component:
-            continue
-        max_vertex_population = max( DG.nodes[i]['TOTPOP'] for i in component )
-        max_population_vertices = [ i for i in component if DG.nodes[i]['TOTPOP'] == max_vertex_population ]
-        a = max_population_vertices[0]
-        C = find_minimal_separator(DG, component, b)
-        m.cbLazy( m._x[a,1] + m._x[b,1] <= 1 + gp.quicksum( m._x[c,1] for c in C ) )
 
 def to_string(my_list):
     string = str()
@@ -171,110 +123,22 @@ def enumerate_districts(G, L, U, k, root=None):
         
     return  districts
 
-def min_cut_districts(G, L, U, k, root=None):
-    district_cache = list()
-    m = gp.Model()
-    x = m.addVars(G.nodes, k, vtype=GRB.BINARY)
 
-    m.addConstrs( x[i,0] + x[i,1] == 1 for i in G.nodes )
-    m.addConstr( gp.quicksum( G.nodes[i]['TOTPOP'] * x[i,0] for i in G.nodes ) >= L )
-    m.addConstr( gp.quicksum( G.nodes[i]['TOTPOP'] * x[i,0] for i in G.nodes ) <= U )
-    m.addConstr( gp.quicksum( G.nodes[i]['TOTPOP'] * x[i,1] for i in G.nodes ) >= (k-1)*L )
-    m.addConstr( gp.quicksum( G.nodes[i]['TOTPOP'] * x[i,1] for i in G.nodes ) <= (k-1)*U )
-
-    # symmetry breaking: fix root to be in first district
-    if root is None:
-        max_population = max( G.nodes[i]['TOTPOP'] for i in G.nodes )
-        root = [ i for i in G.nodes if G.nodes[i]['TOTPOP']==max_population ][0]
+def enumerate_and_solve_k2_subproblems(G, deviation_persons, L, U, k, root=None, obj_type = 'cut_edges'):
+    assert obj_type in {
+        'inverse_Polsby_Popper', 'cut_edges', 'perimeter',
+        'average_Polsby_Popper', 'bottleneck_Polsby_Popper',
+        'stay_in_old_districts'
+    }, "Invalid objective type."
+    
         
-    x[root,0].LB = 1
-
-    M = G.number_of_nodes() - 1
-    DG = nx.DiGraph(G)
-
-    # add flow-based contiguity constraints (Shirabe) for first district
-    f = m.addVars(DG.edges)
-    m.addConstrs( gp.quicksum( f[j,i] - f[i,j] for j in G.neighbors(i) ) == x[i,0] for i in G.nodes if i != root )
-    m.addConstrs( gp.quicksum( f[j,i] for j in G.neighbors(i) ) <= M * x[i,0] for i in G.nodes if i != root )
-    m.addConstr( gp.quicksum( f[j,root] for j in G.neighbors(root) ) == 0 )
-    
-  
-    z = m.addVars(G.edges, vtype=GRB.BINARY)
-    m.addConstrs( x[i,0]-x[j,0] <= z[i,j] for i,j in G.edges )
-    m.addConstrs( x[j,0]-x[i,0] <= z[i,j] for i,j in G.edges )
-    m.setObjective( gp.quicksum(z), GRB.MINIMIZE)
-    m.Params.LazyConstraints = 1
-    m._callback = cut_callback
-    
-    m._x = x                   
-    m._k = k
-    m._L = L
-    m._U = U
-    m._DG = DG                  
-    m._root = root              
-    m.Params.IntFeasTol = 1e-7
-    m.Params.FeasibilityTol = 1e-7
-    
-    # speedups exploiting articulation points
-    for v in nx.articulation_points(G):
-        
-        # check if components of G-v have population < L. 
-        # if so, we can merge that component with v
-        Vv = [ i for i in G.nodes if i != v ]
-        for component in nx.connected_components( G.subgraph(Vv) ):
-            population = sum( G.nodes[i]['TOTPOP'] for i in component )
-            if population < L:
-                print("Component of G -",v,"has insufficient population; merging with",component)
-                print("The articulation vertex corresponds to",G.nodes[v]['NAME20'])
-                m.addConstrs( m._x[v,0] == m._x[w,0] for w in component )
-
-    # inject solution from cache?
-    m.NumStart = 0
-    V = set( G.nodes )
-    for district in district_cache:
-        if set(district).issubset(V):
-            complement = [ i for i in G.nodes if i not in district ]
-            population = sum( G.nodes[i]['TOTPOP'] for i in complement )
-            if nx.is_connected(G.subgraph(complement)) and L <= population and population <= U:
-                m.NumStart += 1
-                m.params.StartNumber = m.NumStart
-                for i in district:
-                    m._x[i,0].start = 1
-                for i in complement:
-                    m._x[i,1].start = 1
-    
-    m.optimize( m._callback )
-    
-    if  m.status == 2:    
-        min_cut_districts = [ [ i for i in DG.nodes if m._x[i,j].x > 0.5 ] for j in range(k)]
-        # report solutions
-        print("We found the following districts:\n")
-        print(min_cut_districts)
-        print("the objective value is:", m.objval)
-        district_cache.append( [ i for i in DG.nodes if m._x[i,0].x > 0.5 ] )
-    else:
-        print('m.status is', m.status) 
-        min_cut_districts = list()
-        
-    return min_cut_districts
-
-
-def enumeration_with_fixed_roots(G, L, U, k, roots=None):
-        
-    if roots is None or len(roots) == 0:
-        raise ValueError("At least one root must be provided.")
-
-    root_nodes = []
-    for name in roots:
-        matches = [i for i in G.nodes if G.nodes[i]['NAME20'] == name]
-        if not matches:
-            raise ValueError(f"Root with NAME20 '{name}' not found in graph.")
-        root_nodes.append(matches[0])
+    matches = [i for i in G.nodes if G.nodes[i]['NAME20'] == root]
+    if not matches:
+        raise ValueError(f"Root with NAME20 '{root}' not found in graph.")
+    root_node = matches[0]
 
     full_plans = []
-    
-    primary_root = root_nodes[0]
-    first_districts = enumerate_districts(G, L, U, k, root=primary_root)
+    first_districts = enumerate_districts(G, L, U, k, root= root_node)
 
     for idx, district_nodes in enumerate(first_districts):
         print(f"\n*************** Plan {idx+1} *********************")
@@ -283,14 +147,18 @@ def enumeration_with_fixed_roots(G, L, U, k, roots=None):
         remaining_graph = G.subgraph(remaining_nodes)
 
         remaining_k = k - 1
-        secondary_root = root_nodes[1] if len(root_nodes) > 1 else None
-
-        other_districts = min_cut_districts(remaining_graph, L, U, remaining_k, root=secondary_root)
+        remaining_graph._ideal_population =G._ideal_population
+        remaining_graph._k = remaining_k
+        
+        other_districts, upper_bound, lower_bound, status = labeling_model(
+            remaining_graph, deviation_persons=deviation_persons, obj_type=obj_type,
+            contiguity='shir', verbose=True)
 
         if other_districts:
             plan = [district_nodes] + other_districts
             full_plans.append(plan)
-
+            print('plan =', plan)
+            check_plan(G, plan,year=2020)
     print("\nWe found the following plans:\n")
     for i, plan in enumerate(full_plans):
         print(f"Plan {i+1}: {plan}")

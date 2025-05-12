@@ -7,6 +7,8 @@ Created on Fri Aug 16 12:12:17 2024
 
 import math
 import networkx as nx
+import sys
+from pathlib import Path
 
 # Includes functions for calculating metrics like compactness, deviation, etc
 def label(plan):
@@ -203,3 +205,20 @@ def get_best_plan(G, obj_type, plans):
     return best_plan
 
 
+def setup_paths(year, state):
+    
+   current_dir = Path(__file__).resolve().parent
+   src_path = current_dir / 'src'
+   if src_path.is_dir():
+        sys.path.append(str(src_path))
+
+   data_path = current_dir / 'data' / str(year)
+
+    
+   if not data_path.is_dir():
+       data_path = Path(f'C:/dat/{year}/')
+ 
+   filename = data_path / f"{state}_county.json"
+   filename2 = data_path / f"{state}_county.shp"
+
+   return filename, filename2
