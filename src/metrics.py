@@ -208,10 +208,9 @@ def get_best_plan(G, obj_type, plans):
 
 def setup_paths(year, state):
     current_dir = Path(__file__).resolve().parent
-            
-    data_dir = os.getenv("DATA_DIR", str(current_dir / "dat"))
+               
+    data_dir = os.getenv("DATA_DIR", str(current_dir /"Finding_Pareto_Optimal_Districting_Plans-main"/ "dat"))
     data_path = Path(data_dir) / str(year)
-
     filename = data_path / f"{state}_county.json"
     filename2 = data_path / f"{state}_county.shp"
 
