@@ -212,7 +212,7 @@ def setup_paths(year, state):
     if src_path.exists():
         sys.path.append(str(src_path))
         
-    data_dir = os.getenv("DATA_DIR", str(current_dir / "data"))
+    data_dir = os.getenv("DATA_DIR", str(current_dir / "dat"))
     data_path = Path(data_dir) / str(year)
 
     filename = data_path / f"{state}_county.json"
