@@ -7,6 +7,7 @@ Created on Fri Aug 16 12:12:17 2024
 
 import math
 import networkx as nx
+import os
 import sys
 from pathlib import Path
 
@@ -206,19 +207,15 @@ def get_best_plan(G, obj_type, plans):
 
 
 def setup_paths(year, state):
-    
-   current_dir = Path(__file__).resolve().parent
-   src_path = current_dir / 'src'
-   if src_path.is_dir():
+    current_dir = Path(__file__).resolve().parent
+    src_path = current_dir / 'src'
+    if src_path.exists():
         sys.path.append(str(src_path))
+        
+    data_dir = os.getenv("DATA_DIR", str(current_dir / "data"))
+    data_path = Path(data_dir) / str(year)
 
-   data_path = current_dir / 'data' / str(year)
+    filename = data_path / f"{state}_county.json"
+    filename2 = data_path / f"{state}_county.shp"
 
-    
-   if not data_path.is_dir():
-       data_path = Path(f'C:/dat/{year}/')
- 
-   filename = data_path / f"{state}_county.json"
-   filename2 = data_path / f"{state}_county.shp"
-
-   return filename, filename2
+    return filename, filename2
