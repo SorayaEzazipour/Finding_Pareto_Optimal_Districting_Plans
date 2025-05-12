@@ -4,9 +4,9 @@ from metrics import setup_paths
 
 # function to draw single districts/county_clusters/multi_districts
 #
-def draw_single_district( state, year, G, district, zoom=False, title=None ):
+def draw_single_district( state, current_dir, year, G, district, zoom=False, title=None ):
     
-    _ ,filename2 = setup_paths(year, state)
+    _ ,filename2 = setup_paths(year, state, current_dir)
     df = gpd.read_file(str(filename2))
     node_with_this_geoid = { G.nodes[i]['GEOID20'] : i for i in G.nodes }
     assignment = [ -1 for i in G.nodes ]
@@ -32,11 +32,11 @@ def draw_single_district( state, year, G, district, zoom=False, title=None ):
 
 
 
-def draw_plan(state, G, plan, title=None, year=2020):
+def draw_plan(state, current_dir, G, plan, title=None, year=2020):
     # Select GEOID based on the year
     GEOID = 'GEOID20' if year == 2020 else 'GEOID10'
 
-    _ , filename2 = setup_paths(year, state)
+    _ , filename2 = setup_paths(year, state, current_dir)
     df = gpd.read_file(str(filename2))
     
     if GEOID not in G.nodes[next(iter(G.nodes))] or GEOID not in df.columns:
