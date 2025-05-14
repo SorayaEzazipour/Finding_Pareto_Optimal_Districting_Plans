@@ -1,13 +1,11 @@
 import geopandas as gpd
 import matplotlib.pyplot as plt
-from metrics import setup_paths
 
 # function to draw single districts/county_clusters/multi_districts
 #
-def draw_single_district( state, current_dir, year, G, district, zoom=False, title=None ):
+def draw_single_district( filepath, filename, G, district, zoom=False, title=None ):
     
-    _ ,filename2 = setup_paths(year, state, current_dir)
-    df = gpd.read_file(str(filename2))
+    df = gpd.read_file( filepath + filename )
     node_with_this_geoid = { G.nodes[i]['GEOID20'] : i for i in G.nodes }
     assignment = [ -1 for i in G.nodes ]
 
@@ -32,12 +30,12 @@ def draw_single_district( state, current_dir, year, G, district, zoom=False, tit
 
 
 
-def draw_plan(state, current_dir, G, plan, title=None, year=2020):
+def draw_plan(filepath, filename, G, plan, title=None, year=2020):
     # Select GEOID based on the year
     GEOID = 'GEOID20' if year == 2020 else 'GEOID10'
 
-    _ , filename2 = setup_paths(year, state, current_dir)
-    df = gpd.read_file(str(filename2))
+
+    df = gpd.read_file(filepath + filename)
     
     if GEOID not in G.nodes[next(iter(G.nodes))] or GEOID not in df.columns:
         raise ValueError(f"GEOID '{GEOID}' not found in the graph or geojson file.")
@@ -56,7 +54,7 @@ def draw_plan(state, current_dir, G, plan, title=None, year=2020):
     df['assignment'] = assignment
 
     # Plot the map
-    my_fig = df.plot(column='assignment', legend=False, figsize=(10, 10)).get_figure()
+    my_fig = df.plot(column='assignment', legend=False, figsize=(5,5)).get_figure()
     plt.axis('off')
     plt.title(title or "Districting Plan")
     plt.show()
