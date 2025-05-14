@@ -204,12 +204,3 @@ def get_best_plan(G, obj_type, plans):
                 best_plan = plan
     
     return best_plan
-
-
-def setup_paths(year, state,current_dir):      
-    data_dir = os.getenv("DATA_DIR", str(current_dir /"Finding_Pareto_Optimal_Districting_Plans-main"/ "dat"))
-    data_path = Path(data_dir) / str(year)
-    filename = data_path / f"{state}_county.json"
-    filename2 = data_path / f"{state}_county.shp"
-
-    return filename, filename2
