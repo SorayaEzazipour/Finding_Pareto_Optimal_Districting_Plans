@@ -77,7 +77,7 @@ class ParetoFrontier:
         # sort by smallest objective1 to largest objective1
         plan_tuples = [ (pareto_upper_bounds[i][0], pareto_upper_bounds[i][1],pareto_lower_bounds[i][0], pareto_lower_bounds[i][1], pareto_plans[i]) for i in range(len(pareto_plans)) ]
         sorted_tuples = sorted(plan_tuples, key=lambda tup : tup[0])
-        self.pareto_upper_bounds = [ [tup[0], tup[1]] for tup in sorted_tuples ]
+        self.upper_bounds = [ [tup[0], tup[1]] for tup in sorted_tuples ]
         self.lower_bounds = [ [tup[2], tup[3]] for tup in sorted_tuples ]
         self.plans = [ tup[4] for tup in sorted_tuples ]
         
@@ -332,7 +332,7 @@ class ParetoFrontier:
     
         if method == 'epsilon_constraint_method':
             fig.suptitle("Restricted Value Function")
-        else:
+        if method =='heuristic':
             fig.suptitle("Restricted Value Function (estimated)")
     
         if num_panels == 1:
