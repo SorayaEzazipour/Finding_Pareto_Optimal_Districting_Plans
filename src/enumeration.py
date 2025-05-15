@@ -132,9 +132,9 @@ def enumerate_and_solve_k2_subproblems(G, deviation_persons, L, U, k, root=None,
     }, "Invalid objective type."
     
         
-    matches = [i for i in G.nodes if G.nodes[i]['NAME10'] == root]
+    matches = [i for i in G.nodes if G.nodes[i]['NAME20'] == root]
     if not matches:
-        raise ValueError(f"Root with NAME10 '{root}' not found in graph.")
+        raise ValueError(f"Root with NAME20 '{root}' not found in graph.")
     root_node = matches[0]
 
     full_plans = []
