@@ -25,6 +25,7 @@
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+from draw import draw_plan
 import numpy as np
 import math
 
@@ -518,28 +519,12 @@ class ParetoFrontier:
         plt.title('Pareto Points with Dominated Points Highlighted')
         plt.tight_layout()
         plt.show()
-
-
-    def draw_plans(self):
-        
-        assert self.state is not None, 'draw_plans requires to specify a state at init'
-        assert self.level is not None, 'draw_plans requires to specify a level (e.g., county, tract, vtd) at init'
-
-        try:
-            self.graph
-        except:
-            from util import read_graph_from_json
-            filepath1 = 'C:\\districting-data-2020-reprojection\\'
-            filename1 = self.state + '_' + self.level + '.json'
-            self.graph = read_graph_from_json(filepath1+filename1)
-        
-        from draw import draw_plan
-        filepath2 = 'C:\\districting-data-2020\\'
-        filename2 = self.state + '_' + self.level + '.shp'
-        ideal_population = sum( self.graph.nodes[i]['TOTPOP'] for i in self.graph.nodes ) / len( self.plans[0] )
-        for (plan,upper_bound) in zip(self.plans,self.upper_bounds):
-            title = f"{upper_bound[0]}-person deviation ({round(100*upper_bound[0]/ideal_population,4)}%), {round(upper_bound[1],4)} {self.obj_names[1]}"
-            draw_plan( filepath2, filename2, self.graph, plan, title=title)
     
+
+    def draw_plans(self, G, filepath, filename):
+        ideal_population = sum(G.nodes[i]['TOTPOP'] for i in G.nodes) / len(self.plans[0])
+        for (plan, upper_bound) in zip(self.plans, self.upper_bounds):
+            title = f"{round(upper_bound[0],2)}-person deviation ({round(100 * upper_bound[0] / ideal_population, 4)}%), {round(upper_bound[1], 4)} {self.obj_names[1]}"
+            draw_plan(filepath=filepath, filename=filename, G=G, plan=plan, title=title)    
     
    
