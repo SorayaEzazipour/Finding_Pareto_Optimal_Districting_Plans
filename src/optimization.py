@@ -341,8 +341,8 @@ def printif(condition, statement):
     if condition:
         print(statement)
 
-def save_plans(plans, state):
-    filename = f"{state}_plans.py"
+def save_plans(plans, state, year=2020):
+    filename = f"{state}_plans_{year}.py"
     with open(filename, "w") as f:
         f.write(f"plans = {repr(plans)}\n")
     
@@ -394,5 +394,5 @@ def iterative_refinement(G, L, U, k, state, year=2020, enumeration_limit=10, bre
 
                 county_clusterings.append( new_county_clustering )
                 list_of_sizes.append( new_sizes )
-    save_plans(plans, state)
+    save_plans(plans, state, year)
     return plans
