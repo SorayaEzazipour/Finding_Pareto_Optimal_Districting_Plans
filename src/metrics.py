@@ -204,3 +204,24 @@ def get_best_plan(G, obj_type, plans):
                 best_plan = plan
     
     return best_plan
+
+def district_objective(G, district, obj_type):
+    district_bool = { i : False for i in G.nodes }
+    for i in district:
+        district_bool[i] = True
+    if obj_type == 'cut_edges':
+        return sum( 1 for u in district for v in G.neighbors(u) if not district_bool[v] )
+    elif obj_type == 'perimeter':
+        internal_perim = sum( G.edges[u,v]['shared_perim'] for u in district for v in G.neighbors(u) if not district_bool[v] )
+        external_perim = sum( G.nodes[i]['boundary_perim'] for i in district if G.nodes[i]['boundary_node'] ) 
+        return internal_perim + external_perim
+    elif obj_type == 'shared_perim':
+        return sum( G.edges[u,v]['shared_perim'] for u in district for v in G.neighbors(u) if not district_bool[v] )
+    elif obj_type =='inverse_polsby_popper':
+        internal_perim = sum( G.edges[u,v]['shared_perim'] for u in district for v in G.neighbors(u) if not district_bool[v] )
+        external_perim = sum( G.nodes[i]['boundary_perim'] for i in district if G.nodes[i]['boundary_node'] ) 
+        P = internal_perim + external_perim
+        A = sum( G.nodes[i]['area'] for i in district )
+        return P * P / ( 4 * math.pi * A )
+    else:
+        assert False
