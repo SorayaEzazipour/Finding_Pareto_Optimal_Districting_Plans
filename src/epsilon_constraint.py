@@ -22,7 +22,7 @@ def randomized_epsilon_constraint_method(G, obj_type='bottleneck_Polsby_Popper',
                                          cutoff=None, verbose=False, warm_starts=None,
                                          warm_start_mode='refinement', starting_deviation=0.01,
                                          time_limit=7200, sizes=None, multiplier=1,
-                                         max_B=False, symmetry_breaking=None, similarity=None):
+                                         max_B=False, symmetry_breaking=None, similarity=None,state=None,year=2020):
     
     assert obj_type in {
         'inverse_Polsby_Popper', 'cut_edges', 'perimeter',
@@ -51,7 +51,7 @@ def randomized_epsilon_constraint_method(G, obj_type='bottleneck_Polsby_Popper',
             print(f"{'*' * 40}\nGenerating warm starts via iterative_refinement...\n{'*' * 40}")
             G._L = ceil(G._ideal_population - deviation_persons)
             G._U = floor(G._ideal_population + deviation_persons)
-            current_warm_starts = iterative_refinement(G, G._L, G._U, G._k, enumeration_limit=5, verbose=False )
+            current_warm_starts = iterative_refinement(G, G._L, G._U, G._k, state=state, year=year, enumeration_limit=5, verbose=False )
 
         elif warm_start_mode == 'user' and persistent_warm_starts:
             print("Using user-provided warm starts.")
@@ -132,13 +132,13 @@ def randomized_epsilon_constraint_method(G, obj_type='bottleneck_Polsby_Popper',
 def epsilon_constraint_method(G, obj_type='bottleneck_Polsby_Popper', contiguity='lcut', cutoff=None,
                               verbose=False,  warm_start_mode='refinement', warm_starts=None,
                               starting_deviation=0.01, time_limit=7200, sizes=None, max_B=False, 
-                              symmetry_breaking=None, similarity=None):
+                              symmetry_breaking=None, similarity=None, state=None,year=2020):
     
     return randomized_epsilon_constraint_method(G, obj_type=obj_type, contiguity=contiguity, cutoff=cutoff, verbose=verbose, 
                                                 warm_start_mode= warm_start_mode,warm_starts=warm_starts,
                                                 starting_deviation=starting_deviation, time_limit=time_limit, 
                                                 sizes=sizes, multiplier=0, max_B=max_B, symmetry_breaking=symmetry_breaking,
-                                                similarity=similarity)
+                                                similarity=similarity, state=state,year=year)
 
 #############################     select_better_warm_start    ####################################
 #############################     select_better_warm_start  ####################################
