@@ -2,7 +2,7 @@ import networkx as nx
 import gurobipy as gp
 from gurobipy import GRB
 import math
-from util import district_objective
+from metrics import district_objective
 
 # Finds a minimal vertex subset that separates component from vertex b in digraph DG.
 #
@@ -346,7 +346,7 @@ def save_plans(plans, state, year=2020):
     with open(filename, "w") as f:
         f.write(f"plans = {repr(plans)}\n")
     
-def iterative_refinement(G, L, U, k, state, year=2020, enumeration_limit=10, break_size=1, cache=True, verbose=False):
+def iterative_refinement(G, L, U, k, state=None , year=2020, enumeration_limit=10, break_size=1, cache=True, verbose=False):
 
     # initializations
     trivial_clustering = [ list(G.nodes) ]
