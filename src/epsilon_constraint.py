@@ -140,15 +140,6 @@ def epsilon_constraint_method(G, obj_type='bottleneck_Polsby_Popper', contiguity
                                                 sizes=sizes, multiplier=0, max_B=max_B, symmetry_breaking=symmetry_breaking,
                                                 similarity=similarity, state=state,year=year)
 
-#############################     select_better_warm_start    ####################################
-#############################     select_better_warm_start  ####################################
-def select_better_warm_start(obj_type, current_warm_start, new_warm_start, comp_current, comp_new):
-    if obj_type in ['cut_edges', 'inverse_Polsby_Popper', 'perimeter'] and comp_new < comp_current:
-        return new_warm_start
-    elif obj_type in ['bottleneck_Polsby_Popper', 'average_Polsby_Popper'] and comp_new > comp_current:
-        return new_warm_start
-    return current_warm_start
-
 #############################     filter_dominated_plans    ####################################
 #############################     filter_dominated_plans  ####################################
 def filter_dominated_plans(G, plans, obj_type):
