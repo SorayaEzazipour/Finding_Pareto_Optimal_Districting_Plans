@@ -38,7 +38,7 @@ def solve_maxB_problem(DG):
     m.addConstrs( X[u,j] + B[v] <= 1 + X[v,j] for u,v in DG.edges for j in range(q) )
     
     # objective is to maximize size of set B
-    m.setObjective( gp.quicksum( B ), GRB.MAXIMIZE )
+    m.setObjective( sum( B[i] for i in DG.nodes ), GRB.MAXIMIZE )
     
     m.Params.MIPFocus = 1 # turn on MIPFocus
     m.Params.TimeLimit = 60 # 60-second time limit

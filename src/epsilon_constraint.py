@@ -5,51 +5,43 @@ Created on Mon Sep  9 12:15:07 2024
 @author: sezazip
 """
 
-from metrics import*
-from mip import*
+from metrics import *
+from mip import *
 from math import ceil, floor
-import random
 from optimization import iterative_refinement
 
+#############################  epsilon_constraint_method    ####################################
+#############################  epsilon_constraint_method  ####################################
 
-#############################     randomized_epsilon_constraint_method    ####################################
-#############################     randomized_epsilon_constraint_method    ####################################
-
-#Epsilon constraint method with a randomization factor controlled by 'multiplier'.
-#Default multiplier is 1 for randomization, but can be adjusted for more control.
-def randomized_epsilon_constraint_method(G, obj_type='bottleneck_Polsby_Popper', contiguity='lcut',
-                                         cutoff=None, verbose=False, warm_starts=None,
-                                         warm_start_mode='refinement', starting_deviation=0.01,
-                                         time_limit=7200, sizes=None, multiplier=1,
-                                         max_B=False, symmetry_breaking=None, similarity=None,state=None,year=2020):
+def epsilon_constraint_method(G, obj_type='bottleneck_Polsby_Popper', contiguity='lcut', cutoff=None,
+                              verbose=False, warm_start_mode='refinement', warm_starts=None,
+                              starting_deviation=0.01, time_limit=7200, sizes=None, max_B=False, 
+                              symmetry_breaking=None, similarity=None, state=None, year=2020):
     
-    assert obj_type in {
-        'inverse_Polsby_Popper', 'cut_edges', 'perimeter',
-        'average_Polsby_Popper', 'bottleneck_Polsby_Popper',
-        'stay_in_old_districts'
-    }, "Invalid objective type."
+    assert obj_type in { 'inverse_Polsby_Popper', 'cut_edges', 'perimeter',
+        'average_Polsby_Popper', 'bottleneck_Polsby_Popper' }, "Invalid objective type."
     assert contiguity in {'lcut', 'scf', 'shir'}, "Invalid contiguity type."
     assert symmetry_breaking in {None, 'orbitope', 'rsum'}, "Invalid symmetry_breaking type."
     assert warm_start_mode in {'none', 'user', 'refinement'}, "Invalid warm_start_mode."
 
     deviation_persons = starting_deviation * G._ideal_population
-    G._L = math.ceil(G._ideal_population - deviation_persons)
-    G._U = math.floor(G._ideal_population + deviation_persons)
-    print(f'L = {G._L} and U = {G._U}' )
+    G._L = ceil( G._ideal_population - deviation_persons )
+    G._U = floor( G._ideal_population + deviation_persons )
+    print(f"Initially, L = {G._L} and U = {G._U} and k = {G._k}.")
     
     epsilon = 1 / (2 * G._k)
-    plans, deviations, obj_bounds = [], [], []
+    (plans, deviations, obj_bounds) = ([], [], [])
 
     persistent_warm_starts = warm_starts if warm_start_mode == 'user' else None
 
     while True:
         print(f"\n{'*' * 40}\nTrying deviation = {deviation_persons}\n{'*' * 40}")
-        current_warm_starts = []
+        current_warm_starts = list()
 
         if warm_start_mode == 'refinement':
             print(f"{'*' * 40}\nGenerating warm starts via iterative_refinement...\n{'*' * 40}")
-            G._L = ceil(G._ideal_population - deviation_persons)
-            G._U = floor(G._ideal_population + deviation_persons)
+            G._L = ceil( G._ideal_population - deviation_persons )
+            G._U = floor( G._ideal_population + deviation_persons )
             current_warm_starts = iterative_refinement(G, G._L, G._U, G._k, state=state, year=year, enumeration_limit=5, verbose=False )
 
         elif warm_start_mode == 'user' and persistent_warm_starts:
@@ -62,7 +54,6 @@ def randomized_epsilon_constraint_method(G, obj_type='bottleneck_Polsby_Popper',
 
         for candidate in current_warm_starts:
             deviation = observed_deviation_persons(G, candidate, G._ideal_population)
-            
             is_better = False
             if deviation <= deviation_persons :
                 obj_value = compute_obj(G, candidate, obj_type)
@@ -91,8 +82,7 @@ def randomized_epsilon_constraint_method(G, obj_type='bottleneck_Polsby_Popper',
         plan, upper_bound, lower_bound, status = labeling_model(
             G, deviation_persons=deviation_persons, obj_type=obj_type,
             contiguity=contiguity, cutoff=cutoff, verbose=verbose,
-            warm_start=warm_start, time_limit=time_limit, sizes=sizes,
-            multiplier=multiplier, max_B=max_B,
+            warm_start=warm_start, time_limit=time_limit, sizes=sizes, max_B=max_B,
             symmetry_breaking=symmetry_breaking, similarity=similarity)
 
         if plan is None:
@@ -104,8 +94,7 @@ def randomized_epsilon_constraint_method(G, obj_type='bottleneck_Polsby_Popper',
         else:
             print(f"\n{'*' * 40}\nOptimal solution found! Gurobi status: {status}\n{'*' * 40}")
 
-        print(plan)
-
+        print("plan =",plan)
         plans.append(plan)
         obj_bounds.append([upper_bound, lower_bound])
         dev = observed_deviation_persons(G, plan, G._ideal_population)
@@ -113,36 +102,21 @@ def randomized_epsilon_constraint_method(G, obj_type='bottleneck_Polsby_Popper',
         deviation_persons = dev - epsilon
 
         if deviation_persons < epsilon:
-            print("Deviation is too small, stopping early.")
+            print("Deviation is too small, exiting now.")
             break
 
     # Filter nondominated plans
     nondominated_plans = filter_dominated_plans(G, plans, obj_type)
-    indices = [plans.index(plan) for plan in nondominated_plans]
-    nondominated_deviations = [deviations[i] for i in indices]
-    nondominated_obj_bounds = [obj_bounds[i] for i in indices]
+    indices = [ plans.index(plan) for plan in nondominated_plans ]
+    nondominated_deviations = [ deviations[i] for i in indices ]
+    nondominated_obj_bounds = [ obj_bounds[i] for i in indices ]
 
-    return nondominated_plans, nondominated_obj_bounds, nondominated_deviations
-
-#############################  Standard  epsilon_constraint_method    ####################################
-#############################  Standard  epsilon_constraint_method  ####################################
-
-#Standard epsilon constraint method that calls the randomized version with multiplier=0.
-def epsilon_constraint_method(G, obj_type='bottleneck_Polsby_Popper', contiguity='lcut', cutoff=None,
-                              verbose=False,  warm_start_mode='refinement', warm_starts=None,
-                              starting_deviation=0.01, time_limit=7200, sizes=None, max_B=False, 
-                              symmetry_breaking=None, similarity=None, state=None,year=2020):
-    
-    return randomized_epsilon_constraint_method(G, obj_type=obj_type, contiguity=contiguity, cutoff=cutoff, verbose=verbose, 
-                                                warm_start_mode= warm_start_mode,warm_starts=warm_starts,
-                                                starting_deviation=starting_deviation, time_limit=time_limit, 
-                                                sizes=sizes, multiplier=0, max_B=max_B, symmetry_breaking=symmetry_breaking,
-                                                similarity=similarity, state=state,year=year)
+    return (nondominated_plans, nondominated_obj_bounds, nondominated_deviations)
 
 #############################     filter_dominated_plans    ####################################
 #############################     filter_dominated_plans  ####################################
 def filter_dominated_plans(G, plans, obj_type):
-    nondominated_plans = []
+    nondominated_plans = list()
     senses = ['max' if obj_type in ['bottleneck_Polsby_Popper', 'average_Polsby_Popper'] else 'min', 'min']
     
     for plan1 in plans:

@@ -15,12 +15,10 @@ def lcut_callback(m, where):
             S = [ v for v in DG.nodes if xval[v,j] > 0.5 ]
             
             # what shall we deem as the "root" of this district? call it b
-            roots = [ i for i in DG.nodes if rval[i,j] > 0.5 ]
-            b = roots[0]
+            b = [ i for i in DG.nodes if rval[i,j] > 0.5 ][0]
             
             # for each component that doesn't contain b, add a cut
             for component in nx.strongly_connected_components(DG.subgraph(S)):
-                
                 if b in component: 
                     continue
                 
@@ -62,11 +60,9 @@ def lcut_callback(m, where):
                     
                 # add lazy cut
                 minC = [ c for c in C if c not in drop_from_C ]
-                m.cbLazy( m._x[a,j] + m._x[b,j] <= 1 + gp.quicksum( m._x[c,j] for c in minC ) )
+                m.cbLazy( m._x[a,j] + m._x[b,j] <= 1 + sum( m._x[c,j] for c in minC ) )
                 m._numLazyCuts += 1
-                
     return
-
 
 # This is algorithm 1 from Fischetti, Matteo, et al. 
 #   "Thinning out Steiner trees: a node-based model for uniform edge costs." 
@@ -94,7 +90,6 @@ def find_fischetti_separator(G, component, b):
     C = [ i for i in G.nodes if neighbors_component[i] and visited[i] ]
     return C
 
-
 def add_shir_constraints(m, G):
     
     DG = nx.DiGraph(G)
@@ -109,19 +104,17 @@ def add_shir_constraints(m, G):
         # compute big-M  
         M = most_possible_nodes_in_one_district(G, size) - 1
     
-    
         # flow can only be generated at roots
         m.addConstrs( g[i,j] <= ( M + 1) * m._r[i,j] for i in DG.nodes )
     
         # flow balance
-        m.addConstrs( g[i,j] - m._x[i,j] == gp.quicksum( f[j,i,u] - f[j,u,i] for u in DG.neighbors(i)) for i in DG.nodes )
+        m.addConstrs( g[i,j] - m._x[i,j] == sum( f[j,i,u] - f[j,u,i] for u in DG.neighbors(i)) for i in DG.nodes )
     
         # flow type j can enter vertex i only if (i is assigned to district j) and (i is not root of j)
-        m.addConstrs( gp.quicksum( f[j,u,i] for u in DG.neighbors(i) ) <= M * (m._x[i,j] - m._r[i,j]) for i in DG.nodes )
+        m.addConstrs( sum( f[j,u,i] for u in DG.neighbors(i) ) <= M * (m._x[i,j] - m._r[i,j]) for i in DG.nodes )
     
     m.update()
     return
-
 
 def add_scf_constraints(m, G):
     DG = nx.DiGraph(G)
@@ -131,7 +124,7 @@ def add_scf_constraints(m, G):
     m._f = m.addVars( DG.edges, name='f' )
         
     #  the region should have one root
-    m.addConstrs(gp.quicksum(m._r[i,j] for i in DG.nodes) == 1 for j in range(len(m._sizes)))
+    m.addConstrs(sum(m._r[i,j] for i in DG.nodes) == 1 for j in range(len(m._sizes)))
    
     most = 0
     for size in m._sizes:
@@ -141,17 +134,16 @@ def add_scf_constraints(m, G):
         
     # if not a root, consume some flow.
     # if a root, only send out (so much) flow.
-    m.addConstrs( gp.quicksum( m._f[v,u] - m._f[u,v] for v in DG.neighbors(u) ) 
-                         >= 1 - ( most ) * gp.quicksum( m._r[u,j] for j in range(len(m._sizes)) ) for u in DG.nodes )
+    m.addConstrs( sum( m._f[v,u] - m._f[u,v] for v in DG.neighbors(u) ) 
+                         >= 1 - ( most ) * sum( m._r[u,j] for j in range(len(m._sizes)) ) for u in DG.nodes )
         
     # do not send flow across cut edges
-    m.addConstrs( m._f[u,v] + m._f[v,u] <= ( most - 1 ) * ( 1 - gp.quicksum( m._y[u,v,j] for j in range(len(m._sizes)) ) ) for u,v in DG.edges )
+    m.addConstrs( m._f[u,v] + m._f[v,u] <= ( most - 1 ) * ( 1 - sum( m._y[u,v,j] for j in range(len(m._sizes)) ) ) for u,v in DG.edges )
 
     m.update()
     return
 
-
-def most_possible_nodes_in_one_district(G, size = None):
+def most_possible_nodes_in_one_district(G, size=None):
     cumulative_population = 0
     num_nodes = 0
     population = [ G.nodes[i]['TOTPOP'] for i in G.nodes ]

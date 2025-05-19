@@ -1,5 +1,3 @@
-# #import numpy as np
-
 # # # Example usage
 # # senses = ['min', 'max']  # Minimize the first objective, maximize the second
 # # obj_names = ['deviation', 'bottleneck_polsby_popper']
@@ -21,13 +19,10 @@
 # # print("Pareto front objective values:", pareto.objvals)
 # # pareto.plot()
 
-
-
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from draw import draw_plan
 import numpy as np
-import math
 
 class ParetoFrontier:
     def __init__(self, senses, obj_names=None, state='IA', level='county'):
@@ -36,16 +31,16 @@ class ParetoFrontier:
         self.upper_bounds = []
         self.lower_bounds = []
         self.plans = []
-        assert len( senses ) == 2, "Must pick two objective senses"
-        assert all( sense in {'min', 'max'} for sense in senses ), "Must pick 'min' and 'max' objective senses"
+        assert len( senses ) == 2, "Must pick two objective senses."
+        assert all( sense in {'min', 'max'} for sense in senses ), "Must pick 'min' and 'max' objective senses."
         self.senses = senses
         if obj_names is None:
             obj_names = [ 'Objective 1', 'Objective 2' ]
-        assert len(obj_names)==2, "Must pick two objective names"
+        assert len(obj_names)==2, "Must pick two objective names."
         self.obj_names = obj_names
 
     def add_plan(self, plan, upper_bound=None, lower_bound=None):
-        assert len(upper_bound) == 2, "Plan must have two objective values"
+        assert len(upper_bound) == 2, "Plan must have two objective values."
         if lower_bound is None:
             lower_bound = upper_bound.copy()
         assert len(lower_bound) == 2  
@@ -54,11 +49,10 @@ class ParetoFrontier:
         self.plans.append(plan)
         
         sorted_indices = np.argsort([p[0] for p in self.upper_bounds])
-        self.upper_bounds = [self.upper_bounds[i] for i in sorted_indices]
-        self.lower_bounds = [self.lower_bounds[i] for i in sorted_indices]
-        self.plans = [self.plans[i] for i in sorted_indices]
-        self._filter_and_sort_pareto(self.upper_bounds, self.plans,  self.lower_bounds)
-       
+        self.upper_bounds = [ self.upper_bounds[i] for i in sorted_indices ]
+        self.lower_bounds = [ self.lower_bounds[i] for i in sorted_indices ]
+        self.plans = [ self.plans[i] for i in sorted_indices ]
+        self._filter_and_sort_pareto( self.upper_bounds, self.plans, self.lower_bounds )
         
     # TODO: make this simpler/faster using sorting ideas 
     # Currently it takes time n*n*log(n), but I think it can be n*log(n).
@@ -68,12 +62,12 @@ class ParetoFrontier:
         pareto_lower_bounds = list()
         pareto_plans = list()
         for i, upper_bound in enumerate(upper_bounds):
-            dominated = any(self._dominates(other_upper_bound, upper_bound) for j, other_upper_bound in enumerate(upper_bounds) if i != j)
+            dominated = any( self._dominates(other_upper_bound, upper_bound) for j, other_upper_bound in enumerate(upper_bounds) if i != j )
             duplicated = any( self._is_same_plan(plans[i], plan) for plan in pareto_plans )
             if not dominated and not duplicated:
-                pareto_upper_bounds.append(upper_bound)
-                pareto_lower_bounds.append(lower_bounds[i])
-                pareto_plans.append(plans[i])
+                pareto_upper_bounds.append( upper_bound )
+                pareto_lower_bounds.append( lower_bounds[i] )
+                pareto_plans.append( plans[i] )
 
         # sort by smallest objective1 to largest objective1
         plan_tuples = [ (pareto_upper_bounds[i][0], pareto_upper_bounds[i][1],pareto_lower_bounds[i][0], pareto_lower_bounds[i][1], pareto_plans[i]) for i in range(len(pareto_plans)) ]
@@ -108,11 +102,11 @@ class ParetoFrontier:
     def calculate_limits(self):
         if len(self.upper_bounds) == 0:
             print("No points in the Pareto frontier.")
-            return None, None, None, None
+            return (None, None, None, None)
 
         # Extract the first and second objectives from self.objvals
-        obj1_vals = [val[0] for val in self.upper_bounds]  # Deviation values
-        obj2_vals = [val[1] for val in self.upper_bounds]  # Objective values
+        obj1_vals = [ val[0] for val in self.upper_bounds ]  # Deviation values
+        obj2_vals = [ val[1] for val in self.upper_bounds ]  # Objective values
 
         # Calculate max and min deviations and objectives
         max_deviation = max(obj1_vals)
@@ -257,7 +251,6 @@ class ParetoFrontier:
                 )
             ax.legend(loc='best')
         
-        
         sorted_indices = np.argsort([p[0] for p in self.upper_bounds])
         sorted_points = [self.upper_bounds[i] for i in sorted_indices]
         sorted_lower_bounds = [self.lower_bounds[i] for i in sorted_indices]
@@ -298,7 +291,6 @@ class ParetoFrontier:
                     linewidth=0
                 )
                 ax.add_patch(rect)
-        
             else:
                 # No uncertainty(draw horizontal segment with open and closed circles)
                 ax.plot(current_dev, current_upper, 'bo', markersize=6)  
@@ -308,7 +300,6 @@ class ParetoFrontier:
                     ax.plot(next_dev, current_upper, 'bo', markerfacecolor='white', markersize=6)  # Open circle
                 else:
                     ax.plot([current_dev, rightmost_x], [current_upper, current_upper], 'b-', linewidth=1.5)
-
     
         plt.xlabel(self.obj_names[0])
         plt.ylabel(self.obj_names[1])
@@ -429,10 +420,9 @@ class ParetoFrontier:
                 y_min, y_max = ax.get_ylim()
                 y_range = (y_max - y_min)/len(yticks)
                 new_last_tick = y_max + y_range  
-            
                
                 yticks[-1] = new_last_tick
-                labels = []
+                labels = list()
             
                 for y in yticks:
                     if abs(y) < 1:
@@ -442,7 +432,6 @@ class ParetoFrontier:
             ax.set_yticks(yticks)
             ax.set_yticklabels(labels)
 
-    
         axes[0].set_ylabel(self.obj_names[1])
         plt.tight_layout()
         plt.subplots_adjust(wspace=0.1)
@@ -453,14 +442,12 @@ class ParetoFrontier:
             print("No points in the Pareto frontier.")
             return
     
-        import matplotlib.pyplot as plt
-    
         fig, ax = plt.subplots(figsize=(9, 5))
         ax.grid(True, linestyle='--', alpha=0.7, color='lightgray')
         ax.set_axisbelow(False)
     
         seen_points = set()
-        all_points = []
+        all_points = list()
     
         for frontier, label, color, marker in zip(frontiers, labels, colors, markers):
             for point in frontier.upper_bounds:
@@ -469,8 +456,8 @@ class ParetoFrontier:
                     seen_points.add(key)
                     all_points.append((point[0], point[1], label, color, marker))
     
-        non_dominated = []
-        dominated = []
+        non_dominated = list()
+        dominated = list()
     
         for i, (x1, y1, method1, color1, marker1) in enumerate(all_points):
             dominated_flag = False
@@ -520,11 +507,8 @@ class ParetoFrontier:
         plt.tight_layout()
         plt.show()
     
-
     def draw_plans(self, G, filepath, filename):
         ideal_population = sum(G.nodes[i]['TOTPOP'] for i in G.nodes) / len(self.plans[0])
         for (plan, upper_bound) in zip(self.plans, self.upper_bounds):
             title = f"{round(upper_bound[0],2)}-person deviation ({round(100 * upper_bound[0] / ideal_population, 4)}%), {round(upper_bound[1], 4)} {self.obj_names[1]}"
             draw_plan(filepath=filepath, filename=filename, G=G, plan=plan, title=title)    
-    
-   

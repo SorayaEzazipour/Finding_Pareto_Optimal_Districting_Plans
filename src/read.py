@@ -7,9 +7,7 @@ Created on Fri Aug 16 12:15:50 2024
 from networkx.readwrite import json_graph
 import json
 
-
 import math
-
 
 congressional_districts_2020  = {
       'CA': 52, 'TX': 38, 'FL': 28, 'NY': 26, 'PA': 17, 
@@ -38,13 +36,15 @@ congressional_districts_2010 = {
 
 # Function to read graph from json file
 #
-def read_graph_from_json(state,json_file, update_population=True, rescale_distance=True, year =2020):
+def read_graph_from_json(state,json_file, update_population=True, rescale_distance=True, year=2020):
     
-    if year ==2020:
+    if year==2020:
         k = congressional_districts_2020[state]
-    else:
+    elif year==2010:
         k = congressional_districts_2010[state]
         update_population=False
+    else: 
+        assert False, f"year = {year} is not supported."
     
     with open(json_file) as f:
         data = json.load(f)

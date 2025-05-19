@@ -29,11 +29,9 @@ def draw_single_district( filepath, filename, G, district, zoom=False, title=Non
     return 
 
 
-
 def draw_plan(filepath, filename, G, plan, title=None, year=2020):
     # Select GEOID based on the year
     GEOID = 'GEOID20' if year == 2020 else 'GEOID10'
-
 
     df = gpd.read_file(filepath + filename)
     
@@ -60,3 +58,4 @@ def draw_plan(filepath, filename, G, plan, title=None, year=2020):
     plt.show()
 
     #return my_fig
+    

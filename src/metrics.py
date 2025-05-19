@@ -19,8 +19,8 @@ def cut_edges(G, plan):
     labeling = label(plan)
     return sum( 1 for i,j in G.edges if labeling[i] != labeling[j] )
 
-def observed_deviation_persons(G, plan, ideal_population,year=None):
-    if year ==2000:
+def observed_deviation_persons(G, plan, ideal_population, year=None):
+    if year==2000:
         return max( abs( sum( G.nodes[i]['TOTPOP2000'] for i in district ) - ideal_population ) for district in plan)
     else:   
         return max( abs( sum( G.nodes[i]['TOTPOP'] for i in district ) - ideal_population ) for district in plan)
@@ -91,8 +91,6 @@ def stay_in_old_districts(G, districts, old_districts):
         for i in set(old_districts[j]).intersection(set(districts[j]))  # Find common nodes
     )
 
-
-    
 # Returns the scores for
 #   1. compactness, i.e., worst Polsby-Popper score and 
 #   2. deviation, i.e., worst deviation (expressed in percentage terms)
@@ -110,8 +108,7 @@ def scores(G, plan, ideal_population, objective):
     dev_abs = observed_deviation_persons(G, plan, ideal_population)
     return [ comp, 100 * dev_abs / ideal_population ]
 
- 
-def check_county_clustering(G, clustering, sizes , year=None):
+def check_county_clustering(G, clustering, sizes, year=None):
     all_assigned_nodes = set()
     
     for idx, district in enumerate(clustering):
@@ -146,8 +143,7 @@ def check_county_clustering(G, clustering, sizes , year=None):
     return True
 
 def check_plan(G, plan,year=None):
-    sizes = [1 for j in range(len(plan))]
-    return check_county_clustering(G, plan, sizes,year)
+    return check_county_clustering(G, plan, sizes=[ 1 for j in range(len(plan)) ], year)
 
 def compute_obj(G, districts, obj_type, old_districts=None,year=None):
     DG = nx.DiGraph(G)
@@ -161,7 +157,7 @@ def compute_obj(G, districts, obj_type, old_districts=None,year=None):
         elif obj_type in {'bottleneck_Polsby_Popper', 'average_Polsby_Popper','stay_in_old_districts'}:
             return -math.inf  
     else:
-        if check_plan(G, districts,year):
+        if check_plan(G, districts, year):
             if obj_type == 'bottleneck_Polsby_Popper':
                 return bottleneck_Polsby_Popper(DG, districts)
             elif obj_type == 'cut_edges':
@@ -173,7 +169,7 @@ def compute_obj(G, districts, obj_type, old_districts=None,year=None):
             elif obj_type == 'perimeter':
                 return perimeter(G, districts)
             elif obj_type == 'stay_in_old_districts':
-                return stay_in_old_districts( G, districts, old_districts)
+                return stay_in_old_districts(G, districts, old_districts)
         else:
             if obj_type in {'cut_edges', 'inverse_Polsby_Popper', 'perimeter'}:
                 return math.inf  
