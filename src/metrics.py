@@ -142,8 +142,8 @@ def check_county_clustering(G, clustering, sizes, year=None):
 
     return True
 
-def check_plan(G, plan,year=None):
-    return check_county_clustering(G, plan, sizes=[ 1 for j in range(len(plan)) ], year)
+def check_plan(G, plan, year=None):
+    return check_county_clustering(G, plan, sizes=[ 1 for j in range(len(plan)) ], year=year)
 
 def compute_obj(G, districts, obj_type, old_districts=None,year=None):
     DG = nx.DiGraph(G)
