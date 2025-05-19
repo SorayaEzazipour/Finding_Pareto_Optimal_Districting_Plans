@@ -507,8 +507,8 @@ class ParetoFrontier:
         plt.tight_layout()
         plt.show()
     
-    def draw_plans(self, G, filepath, filename):
+    def draw_plans(self, G, filepath, filename, year=2020):
         ideal_population = sum(G.nodes[i]['TOTPOP'] for i in G.nodes) / len(self.plans[0])
         for (plan, upper_bound) in zip(self.plans, self.upper_bounds):
             title = f"{round(upper_bound[0],2)}-person deviation ({round(100 * upper_bound[0] / ideal_population, 4)}%), {round(upper_bound[1], 4)} {self.obj_names[1]}"
-            draw_plan(filepath=filepath, filename=filename, G=G, plan=plan, title=title)    
+            draw_plan(filepath=filepath, filename=filename, G=G, plan=plan, title=title, year=year)    
