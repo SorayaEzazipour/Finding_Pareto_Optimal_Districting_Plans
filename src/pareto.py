@@ -323,7 +323,7 @@ class ParetoFrontier:
             return
     
         if splits is None:
-            self.plot_with_gap_box(o1lim=o1lim, o2lim=o2lim, infeasible_region=infeasible_region, extra_points=extra_points, extra_colors=extra_colors)
+            self.plot_with_gap_box(method=method, o1lim=o1lim, o2lim=o2lim, infeasible_region=infeasible_region, extra_points=extra_points, extra_colors=extra_colors)
             return
     
         splits = sorted(splits)
