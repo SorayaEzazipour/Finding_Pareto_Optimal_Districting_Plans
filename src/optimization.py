@@ -2,7 +2,7 @@ import networkx as nx
 import gurobipy as gp
 from gurobipy import GRB
 import math
-from util import district_objective
+from metrics import district_objective
 
 # Finds a minimal vertex subset that separates component from vertex b in digraph DG.
 #
@@ -146,7 +146,7 @@ etd_cache = dict()
 
 # The optimization function for the enumeration task
 #
-def enumerate_top_districts(G, obj_type='cut_edges', enumeration_limit=10, forced_names=list(), forbidden_names=list(), cache=False, time_limit=None, verbose=False):
+def enumerate_top_districts(G, obj_type='cut_edges', year=2020, enumeration_limit=10, time_limit=None, forced_names=list(), forbidden_names=list(), cache=False, verbose=False):
     
     assert obj_type in {'cut_edges', 'perimeter', 'inverse_polsby_popper'}
 
@@ -179,15 +179,20 @@ def enumerate_top_districts(G, obj_type='cut_edges', enumeration_limit=10, force
         G._root = [ i for i in G.nodes if G.nodes[i]['TOTPOP']==max_population ][0]
         
     x[G._root,0].LB = 1
+    
+    if year == 2010:
+        name = 'NAME10'
+    else:
+        name = 'NAME20'
 
     # fix forced names
     for i in G.nodes:
-        if G.nodes[i]['NAME20'] in forced_names:
+        if G.nodes[i][name] in forced_names:
             x[i,0].LB = 1
 
     # fix forced names
     for i in G.nodes:
-        if G.nodes[i]['NAME20'] in forbidden_names:
+        if G.nodes[i][name] in forbidden_names:
             x[i,0].UB = 0
 
     M = G.number_of_nodes() - 1
@@ -278,10 +283,10 @@ def enumerate_top_districts(G, obj_type='cut_edges', enumeration_limit=10, force
     return m._districts
 
 
-def districting_heuristic(G, obj_type='cut_edges', enumeration_limit=10):
+def districting_heuristic(G, obj_type='cut_edges', year=2020, enumeration_limit=10):
     
     G._size = 1
-    districts = enumerate_top_districts( G, obj_type=obj_type, enumeration_limit=enumeration_limit )
+    districts = enumerate_top_districts( G, obj_type=obj_type, year=year, enumeration_limit=enumeration_limit )
     partial_plans = [ [district] for district in districts ]
     plans = list()
     
@@ -325,7 +330,7 @@ def districting_heuristic(G, obj_type='cut_edges', enumeration_limit=10):
              
             
         print("\n ***Seeking district #", ndistricts+1,"for partial plan",partial_plan)
-        districts = enumerate_top_districts( H, obj_type=obj_type, enumeration_limit=enumeration_limit )
+        districts = enumerate_top_districts( H, obj_type=obj_type, year=year, enumeration_limit=enumeration_limit )
         for district in districts:
             new_partial_plan = partial_plan.copy()
             new_partial_plan.append( district )
@@ -338,8 +343,12 @@ def printif(condition, statement):
     if condition:
         print(statement)
 
-
-def iterative_refinement(G, L, U, k, enumeration_limit=10, enum_time_limit=600, break_size=1, cache=True, verbose=False):
+def save_plans(plans, state, year=2020):
+    filename = f"{state}_plans_{year}.py"
+    with open(filename, "w") as f:
+        f.write(f"plans = {repr(plans)}\n")
+    
+def iterative_refinement(G, L, U, k, state=None , year=2020, enumeration_limit=10, enum_time_limit=600, break_size=1, cache=True, verbose=False):
 
     # initializations
     trivial_clustering = [ list(G.nodes) ]
@@ -378,7 +387,7 @@ def iterative_refinement(G, L, U, k, enumeration_limit=10, enum_time_limit=600, 
             GS._size = size
             GS._root = None
             printif(verbose,f"Trying sub-cluster sizes: {size} and {sizes[p]-size}.")
-            lefts = enumerate_top_districts( GS, obj_type='cut_edges', enumeration_limit=enumeration_limit, cache=cache, time_limit=enum_time_limit, verbose=False )
+            lefts = enumerate_top_districts( GS, obj_type='cut_edges', year=year, enumeration_limit=enumeration_limit, cache=cache, time_limit=enum_time_limit, verbose=False )
 
             for left in lefts:
                 right = [ i for i in cluster if i not in left ]
@@ -387,5 +396,5 @@ def iterative_refinement(G, L, U, k, enumeration_limit=10, enum_time_limit=600, 
 
                 county_clusterings.append( new_county_clustering )
                 list_of_sizes.append( new_sizes )
-
+    save_plans(plans, state, year)
     return plans
