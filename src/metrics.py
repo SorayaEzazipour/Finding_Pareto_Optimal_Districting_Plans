@@ -221,3 +221,8 @@ def district_objective(G, district, obj_type):
         return P * P / ( 4 * math.pi * A )
     else:
         assert False
+        
+def save_plans(plans, state, year=2020):
+    filename = f"{state}_plans_{year}.py"
+    with open(filename, "w") as f:
+        f.write(f"plans = {repr(plans)}\n")
