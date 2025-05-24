@@ -343,12 +343,8 @@ def printif(condition, statement):
     if condition:
         print(statement)
 
-def save_plans(plans, state, year=2020):
-    filename = f"{state}_plans_{year}.py"
-    with open(filename, "w") as f:
-        f.write(f"plans = {repr(plans)}\n")
     
-def iterative_refinement(G, L, U, k, state=None , year=2020, enumeration_limit=10, enum_time_limit=600, break_size=1, cache=True, verbose=False):
+def iterative_refinement(G, L, U, k,  year=2020, enumeration_limit=10, enum_time_limit=600, break_size=1, cache=True, verbose=False):
 
     # initializations
     trivial_clustering = [ list(G.nodes) ]
@@ -396,5 +392,4 @@ def iterative_refinement(G, L, U, k, state=None , year=2020, enumeration_limit=1
 
                 county_clusterings.append( new_county_clustering )
                 list_of_sizes.append( new_sizes )
-    save_plans(plans, state, year)
     return plans
