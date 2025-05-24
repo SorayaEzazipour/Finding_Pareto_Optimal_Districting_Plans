@@ -3,7 +3,7 @@ from gurobipy import GRB
 import math
 
 def add_cut_edges_objective(m, G):
-    m.setObjective( sum( x[e] for e in G.edges), GRB.MINIMIZE )
+    m.setObjective( sum( m._is_cut[e] for e in G.edges), GRB.MINIMIZE )
     m.update()
 
 def add_perimeter_objective(m, DG):

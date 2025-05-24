@@ -60,7 +60,7 @@ def labeling_model(G, deviation_persons, obj_type, contiguity='lcut', cutoff=Non
     G._L = math.ceil(G._ideal_population - deviation_persons)
     G._U = math.floor(G._ideal_population + deviation_persons)
     k = G._k
-    print(f'L = {G._L} and U = {G._U} and k ={k}' )
+    print(f'L = {G._L} and U = {G._U} and k = {k}' )
 
     m = gp.Model()
     if not verbose:
@@ -101,15 +101,15 @@ def labeling_model(G, deviation_persons, obj_type, contiguity='lcut', cutoff=Non
     #m.addConstrs( m._is_cut[min(u,v),max(u,v)] == sum( m._y[u,v,j] for j in range(len(m._sizes)))  for u,v in DG.edges )
      
     if obj_type == 'cut_edges':
-        mip_objective.add_cut_edges_objective(m, G, multiplier=multiplier)
+        mip_objective.add_cut_edges_objective(m, G)
     elif obj_type == 'perimeter':
-        mip_objective.add_perimeter_objective(m, DG, multiplier=multiplier)
+        mip_objective.add_perimeter_objective(m, DG)
     elif obj_type == 'inverse_Polsby_Popper':
-        mip_objective.add_inverse_Polsby_Popper_objective(m, DG, multiplier=multiplier)
+        mip_objective.add_inverse_Polsby_Popper_objective(m, DG)
     elif obj_type == 'average_Polsby_Popper':
-        mip_objective.add_average_Polsby_Popper_objective(m, DG, multiplier=multiplier)
+        mip_objective.add_average_Polsby_Popper_objective(m, DG)
     elif obj_type == 'bottleneck_Polsby_Popper':      
-        mip_objective.add_bottleneck_Polsby_Popper_objective(m, DG, multiplier=multiplier)
+        mip_objective.add_bottleneck_Polsby_Popper_objective(m, DG)
     else:
         assert False, f"Unsupported objective encountered: {obj_type}"
     
