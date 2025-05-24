@@ -2,7 +2,9 @@ import networkx as nx
 import gurobipy as gp
 from gurobipy import GRB
 import math
-from metrics import district_objective
+import time
+from math import ceil, floor
+from metrics import*
 
 # Finds a minimal vertex subset that separates component from vertex b in digraph DG.
 #
@@ -146,7 +148,7 @@ etd_cache = dict()
 
 # The optimization function for the enumeration task
 #
-def enumerate_top_districts(G, obj_type='cut_edges', year=2020, enumeration_limit=10, time_limit=None, forced_names=list(), forbidden_names=list(), cache=False, verbose=False):
+def enumerate_top_districts(G, obj_type='cut_edges', year=2020, enumeration_limit=10, forced_names=list(), forbidden_names=list(), cache=False, verbose=False):
     
     assert obj_type in {'cut_edges', 'perimeter', 'inverse_polsby_popper'}
 
@@ -273,8 +275,6 @@ def enumerate_top_districts(G, obj_type='cut_edges', year=2020, enumeration_limi
                 m.addConstrs( m._x[v,0] == m._x[w,0] for w in component )
 
     # solve
-    if time_limit is not None:
-        m.Params.TimeLimit = time_limit
     m.optimize( m._callback )
 
     # add solution to our cache and return
@@ -344,7 +344,7 @@ def printif(condition, statement):
         print(statement)
 
     
-def iterative_refinement(G, L, U, k,  year=2020, enumeration_limit=10, enum_time_limit=600, break_size=1, cache=True, verbose=False):
+def iterative_refinement(G, L, U, k,year=2020, enumeration_limit=10, break_size=1, cache=True, verbose=False):
 
     # initializations
     trivial_clustering = [ list(G.nodes) ]
@@ -383,8 +383,8 @@ def iterative_refinement(G, L, U, k,  year=2020, enumeration_limit=10, enum_time
             GS._size = size
             GS._root = None
             printif(verbose,f"Trying sub-cluster sizes: {size} and {sizes[p]-size}.")
-            lefts = enumerate_top_districts( GS, obj_type='cut_edges', year=year, enumeration_limit=enumeration_limit, cache=cache, time_limit=enum_time_limit, verbose=False )
-
+            lefts = enumerate_top_districts(GS, obj_type='cut_edges', year=year, 
+                                            enumeration_limit=enumeration_limit, cache=cache,verbose=False )
             for left in lefts:
                 right = [ i for i in cluster if i not in left ]
                 new_county_clustering = county_clustering[0:p] + [left, right] + county_clustering[p+1:num_clusters+1] 
@@ -393,3 +393,38 @@ def iterative_refinement(G, L, U, k,  year=2020, enumeration_limit=10, enum_time
                 county_clusterings.append( new_county_clustering )
                 list_of_sizes.append( new_sizes )
     return plans
+
+def generate_plans_with_refinement(G, ideal_population, state, year, enumeration_limit):
+    deviation = 0.5
+    max_deviation = 0.01 * ideal_population
+    plans = []
+    first_feasible_dev = None
+
+    while True:
+        print()
+        print("*****************************************")
+        print(f"Trying deviation = {deviation}.")
+        print("*****************************************")
+
+        L = ceil(ideal_population - deviation)
+        U = floor(ideal_population + deviation)
+
+        start_time = time.perf_counter()
+        new_plans = iterative_refinement(G, L, U, G._k, enumeration_limit=enumeration_limit, verbose=False)
+        print("Total time =", round(time.perf_counter() - start_time, 2))
+
+        if new_plans:
+            plans += new_plans
+            if first_feasible_dev is None:
+                min_observed_dev = min(observed_deviation_persons(G, plan, ideal_population) for plan in new_plans)
+                first_feasible_dev = min_observed_dev
+
+        if deviation == max_deviation:
+            break
+
+        deviation *= 2
+        deviation = min(deviation, max_deviation)
+
+    save_plans(plans, state, year)
+    return plans, first_feasible_dev
+
