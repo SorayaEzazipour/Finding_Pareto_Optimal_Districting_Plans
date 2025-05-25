@@ -22,7 +22,7 @@ def randomized_epsilon_constraint_method(G, obj_type='bottleneck_Polsby_Popper',
                                          warm_start_mode='refinement', starting_deviation=0.01,
                                          time_limit=7200, sizes=None, multiplier=1,
                                          max_B=False, symmetry_breaking=None, similarity=None,state=None,year=2020):
-    print(f"{'#' * 100}\n")
+    print(f"{'#' * 100}")
     print(f"Running epsilon constraint method for state {state}, objective {obj_type}")
     print(f"{'#' * 100}\n")
     
