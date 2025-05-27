@@ -144,14 +144,28 @@ def epsilon_constraint_method(G, obj_type='bottleneck_Polsby_Popper', contiguity
 
 #############################     filter_dominated_plans    ####################################
 #############################     filter_dominated_plans  ####################################
+
 def filter_dominated_plans(G, plans, obj_type):
     nondominated_plans = []
     senses = ['max' if obj_type in ['bottleneck_Polsby_Popper', 'average_Polsby_Popper'] else 'min', 'min']
+    scored_plans = [(scores(G, plan, G._ideal_population, obj_type), plan) for plan in plans]
     
-    for plan1 in plans:
-        if not any(dominates(scores(G, plan2, G._ideal_population, obj_type), 
-                            scores(G, plan1, G._ideal_population, obj_type), senses) 
-                    for plan2 in plans):
-            nondominated_plans.append(plan1)
-    
+    def sort_key(x):
+        deviation = x[0][0]
+        compactness = x[0][1]
+        if senses[1] == 'max':
+            compactness = -compactness
+        return (deviation, compactness)
+
+    scored_plans.sort(key=sort_key)
+
+    best_compactness = None
+    for (deviation, compactness), plan in scored_plans:
+        if best_compactness is None or (compactness > best_compactness if senses[1] == 'max' else compactness < best_compactness):
+            best_compactness = compactness
+            nondominated_plans.append(plan)
+
     return nondominated_plans
+
+
+
