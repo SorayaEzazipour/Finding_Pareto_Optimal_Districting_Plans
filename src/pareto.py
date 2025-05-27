@@ -267,7 +267,7 @@ class ParetoFrontier:
             current_dev = sorted_points[i][0]
             current_upper = sorted_points[i][1]
             current_lower = current_upper if sorted_lower_bounds[i] is None else sorted_lower_bounds[i][1]       
-            next_dev = sorted_points[i + 1][0] if i < len(sorted_points) - 1 else current_dev + extension
+            next_dev = sorted_points[i + 1][0] if i < len(sorted_points) - 1 else rightmost_x
             
             rect_width = next_dev - current_dev
             rect_height = abs(current_upper - current_lower)
@@ -346,7 +346,7 @@ class ParetoFrontier:
                 current_dev = 0
             current_lower = self.lower_bounds[i][1] if self.lower_bounds[i] is not None else current_upper
     
-            next_dev = self.upper_bounds[i + 1][0] if i < len(self.upper_bounds) - 1 else current_dev + 0.2
+            next_dev = self.upper_bounds[i + 1][0] if i < len(self.upper_bounds) - 1 else rightmost_x
             rect_width = round(next_dev - current_dev, 2)
             rect_height = abs(current_upper - current_lower)
     
@@ -550,7 +550,10 @@ def plot_pareto_frontiers(G, method='epsilon_constraint_method', plans=None, obj
             upper_bounds = pareto[obj_type].upper_bounds
             max_obj = max(ub[1] for ub in upper_bounds)
             min_obj = min(ub[1] for ub in upper_bounds)
-            o2lim = [min_obj * 0.9, max_obj * 1.1]
+            if obj_type in {"inverse_Polsby_Popper", "cut_edges", "perimeter"}:
+                o2lim = [min_obj * 0.9, max_obj * 1.1]
+            else:
+                o2lim=[max(min_obj-1,0), max_obj+0.1]
 
             pareto[obj_type].tighten_lower_bounds()
             pareto[obj_type].plot_with_custom_x_ranges(method=method, splits=None, o1lim=o1lim, o2lim=o2lim,
@@ -619,12 +622,11 @@ def plot_pareto_frontiers(G, method='epsilon_constraint_method', plans=None, obj
         upper_bounds = pareto.upper_bounds
         max_obj = max(upper_bound[1] for upper_bound in upper_bounds)
         min_obj = min(upper_bound[1] for upper_bound in upper_bounds)
-        o2lim=[min_obj*0.9, max_obj*(1.1)]
-
+        if obj_names[1] in {"inverse_Polsby_Popper", "cut_edges", "perimeter"}:
+             o2lim = [min_obj * 0.9, max_obj * 1.1]
+        else:
+             o2lim=[max(min_obj-1,0), max_obj+0.1]
 
         pareto.plot_with_custom_x_ranges(method=method, splits=None, 
                                  o1lim=o1lim, o2lim=o2lim, no_solution_region = no_solution_region,
-                                 extra_points=extra_points, extra_colors=extra_colors) 
-
-    
-   
+                                 extra_points=extra_points, extra_colors=extra_colors)  
