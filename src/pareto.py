@@ -259,7 +259,6 @@ class ParetoFrontier:
         sorted_indices = np.argsort([p[0] for p in self.upper_bounds])
         sorted_points = [self.upper_bounds[i] for i in sorted_indices]
         sorted_lower_bounds = [self.lower_bounds[i] for i in sorted_indices]
-        extension = 0.2
         rightmost_x = o1lim[1]
         
             
