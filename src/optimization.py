@@ -410,7 +410,7 @@ def generate_plans_with_refinement(G, ideal_population, state, year, enumeration
         U = floor(ideal_population + deviation)
 
         start_time = time.perf_counter()
-        new_plans = iterative_refinement(G, L, U, G._k, enumeration_limit=enumeration_limit, verbose=False)
+        new_plans = iterative_refinement(G, L, U, G._k, year=year, enumeration_limit=enumeration_limit, verbose=False)
         print("Total time =", round(time.perf_counter() - start_time, 2))
 
         if new_plans:
