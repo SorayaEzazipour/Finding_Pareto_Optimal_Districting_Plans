@@ -32,8 +32,6 @@ def epsilon_constraint_method(G, obj_type='bottleneck_Polsby_Popper', contiguity
     
     epsilon = 1 / (2 * G._k)
     (plans, deviations, obj_bounds) = ([], [], [])
-    upper_bounds = list()
-    lower_bounds = list()
     persistent_warm_starts = warm_starts if warm_start_mode == 'user' else None
 
     while True:
@@ -100,8 +98,6 @@ def epsilon_constraint_method(G, obj_type='bottleneck_Polsby_Popper', contiguity
         plans.append(plan)
         obj_bounds.append([upper_bound, lower_bound]) 
         dev = observed_deviation_persons(G, plan, G._ideal_population)
-        upper_bounds.append([dev,upper_bound])
-        lower_bounds.append([dev,lower_bound])
         deviations.append(dev)
         deviation_persons = dev - epsilon
 
