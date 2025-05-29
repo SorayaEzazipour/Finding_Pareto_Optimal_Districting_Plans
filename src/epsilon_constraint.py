@@ -7,9 +7,9 @@ Created on Mon Sep  9 12:15:07 2024
 
 from metrics import*
 from mip import*
+import time
 from math import ceil, floor
 from optimization import iterative_refinement
-import time
 
 #############################  epsilon_constraint_method    ####################################
 #############################  epsilon_constraint_method  ####################################
@@ -32,7 +32,8 @@ def epsilon_constraint_method(G, obj_type='bottleneck_Polsby_Popper', contiguity
     
     epsilon = 1 / (2 * G._k)
     (plans, deviations, obj_bounds) = ([], [], [])
-
+    upper_bounds = list()
+    lower_bounds = list()
     persistent_warm_starts = warm_starts if warm_start_mode == 'user' else None
 
     while True:
@@ -97,57 +98,16 @@ def epsilon_constraint_method(G, obj_type='bottleneck_Polsby_Popper', contiguity
 
         print("plan =",plan)
         plans.append(plan)
-        obj_bounds.append([upper_bound, lower_bound])
+        obj_bounds.append([upper_bound, lower_bound]) 
         dev = observed_deviation_persons(G, plan, G._ideal_population)
+        upper_bounds.append([dev,upper_bound])
+        lower_bounds.append([dev,lower_bound])
         deviations.append(dev)
         deviation_persons = dev - epsilon
 
         if deviation_persons < epsilon:
             print("Deviation is too small, exiting now.")
             break
+            
+    return (plans, obj_bounds, deviations)
 
-    # Filter nondominated plans
-    start_time = time.perf_counter()
-    nondominated_plans = filter_dominated_plans(G, plans, obj_type)
-    print("Total time for filtering dominated plans =", round(time.perf_counter() - start_time, 2))
-    indices = [plans.index(plan) for plan in nondominated_plans]
-    nondominated_deviations = [deviations[i] for i in indices]
-    nondominated_obj_bounds = [obj_bounds[i] for i in indices]
-
-    return (nondominated_plans, nondominated_obj_bounds, nondominated_deviations)
-
-#############################     filter_dominated_plans    ####################################
-#############################     filter_dominated_plans  ####################################
-def filter_dominated_plans(G, plans, obj_type):
-    nondominated_plans = list()
-    senses = ['max' if obj_type in ['bottleneck_Polsby_Popper', 'average_Polsby_Popper'] else 'min', 'min']
-    
-    for plan1 in plans:
-        if not any(dominates(scores(G, plan2, G._ideal_population, obj_type), 
-                            scores(G, plan1, G._ideal_population, obj_type), senses) 
-                    for plan2 in plans):
-            nondominated_plans.append(plan1)
-    
-    return nondominated_plans
-
-
-# def filter_dominated_plans(G, plans, obj_type):
-#     nondominated_plans = []
-#     compactness_sense = 'max' if obj_type in ['bottleneck_Polsby_Popper', 'average_Polsby_Popper'] else 'min'
-#     scored_plans = [(scores(G, plan, G._ideal_population, obj_type), plan) for plan in plans]
-
-   
-#     scored_plans.sort(key=lambda x: (
-#         x[0][0],                                 # deviation
-#         -x[0][1] if compactness_sense == 'max'   # negate for descending sort
-#         else x[0][1]                             # ascending
-#     ))
-
-#     best_compactness = None
-
-#     for (deviation, compactness), plan in scored_plans:
-#         if best_compactness is None or ((compactness > best_compactness) if compactness_sense == 'max' else (compactness < best_compactness)):
-#             best_compactness = compactness
-#             nondominated_plans.append(plan)
-
-#     return nondominated_plans

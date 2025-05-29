@@ -34,9 +34,9 @@ class ParetoFrontier:
     def __init__(self, senses, obj_names=None, state='IA', level='county'):
         self.state = state
         self.level = level
-        self.upper_bounds = []
-        self.lower_bounds = []
-        self.plans = []
+        self.upper_bounds = list()
+        self.lower_bounds = list()
+        self.plans = list()
         assert len( senses ) == 2, "Must pick two objective senses"
         assert all( sense in {'min', 'max'} for sense in senses ), "Must pick 'min' and 'max' objective senses"
         self.senses = senses
@@ -58,32 +58,9 @@ class ParetoFrontier:
         self.upper_bounds = [self.upper_bounds[i] for i in sorted_indices]
         self.lower_bounds = [self.lower_bounds[i] for i in sorted_indices]
         self.plans = [self.plans[i] for i in sorted_indices]
-        self._filter_and_sort_pareto(self.upper_bounds, self.plans,  self.lower_bounds)
+        self.upper_bounds, self.lower_bounds, self.plans = filter_and_sort_pareto(
+           self.plans, self.upper_bounds, self.lower_bounds, self.obj_names[1])
        
-        
-    # TODO: make this simpler/faster using sorting ideas 
-    # Currently it takes time n*n*log(n), but I think it can be n*log(n).
-    def _filter_and_sort_pareto(self, upper_bounds, plans, lower_bounds):
-        # remove dominated
-        pareto_upper_bounds = list()
-        pareto_lower_bounds = list()
-        pareto_plans = list()
-        for i, upper_bound in enumerate(upper_bounds):
-            dominated = any(self._dominates(other_upper_bound, upper_bound) for j, other_upper_bound in enumerate(upper_bounds) if i != j)
-            duplicated = any( self._is_same_plan(plans[i], plan) for plan in pareto_plans )
-            if not dominated and not duplicated:
-                pareto_upper_bounds.append(upper_bound)
-                pareto_lower_bounds.append(lower_bounds[i])
-                pareto_plans.append(plans[i])
-
-        # sort by smallest objective1 to largest objective1
-        plan_tuples = [ (pareto_upper_bounds[i][0], pareto_upper_bounds[i][1],pareto_lower_bounds[i][0],
-                         pareto_lower_bounds[i][1], pareto_plans[i]) for i in range(len(pareto_plans)) ]
-        sorted_tuples = sorted(plan_tuples, key=lambda tup : tup[0])
-        self.upper_bounds = [ [tup[0], tup[1]] for tup in sorted_tuples ]
-        self.lower_bounds = [ [tup[2], tup[3]] for tup in sorted_tuples ]
-        self.plans = [ tup[4] for tup in sorted_tuples ]
-        
     def tighten_lower_bounds(self):
         for i in range(len(self.lower_bounds) - 2, -1, -1):
             if self.lower_bounds[i][1] != self.upper_bounds[i][1]:
@@ -91,21 +68,6 @@ class ParetoFrontier:
                     self.lower_bounds[i][1] = max(self.lower_bounds[i][1], self.lower_bounds[i + 1][1])
                 else:
                     self.lower_bounds[i][1] = min(self.lower_bounds[i][1], self.lower_bounds[i + 1][1])
-        
-    def _dominates(self, objval1, objval2):
-        for i, (o1, o2) in enumerate(zip(objval1, objval2)):
-            if self.senses[i] == 'min' and o1 > o2:
-                return False
-            if self.senses[i] == 'max' and o1 < o2:
-                return False
-        # now, objval1 is at least as good as objval2 in all objectives. 
-        # so, domination amounts to having objval1 != objval2
-        return objval1 != objval2
-
-    def _is_same_plan(self, plan1, plan2):
-        plan1_set = { frozenset(district) for district in plan1 }
-        plan2_set = { frozenset(district) for district in plan2 }
-        return plan1_set == plan2_set
     
     def calculate_limits(self):
         if len(self.upper_bounds) == 0:
@@ -514,6 +476,40 @@ class ParetoFrontier:
             title = f"{round(upper_bound[0],2)}-person deviation ({round(100 * upper_bound[0] / ideal_population, 4)}%), {round(upper_bound[1], 4)} {self.obj_names[1]}"
             draw_plan(filepath=filepath, filename=filename, G=G, plan=plan, title=title) 
 
+            
+def filter_and_sort_pareto(plans, upper_bounds=None, lower_bounds=None, obj_type='cut_edges'):
+    if upper_bounds is None and lower_bounds is None:
+        raise ValueError("At least one of 'upper_bounds' or 'lower_bounds' must be provided.")
+        
+    # Fill in dummy values if only one set of bounds is provided
+    if upper_bounds is None:
+        upper_bounds = lower_bounds.copy()
+    if lower_bounds is None:
+        lower_bounds = upper_bounds.copy()
+        
+    pareto_upper_bounds = list()
+    pareto_lower_bounds = list()
+    pareto_plans = list()
+    compactness_sense = 'max' if obj_type in ['bottleneck_Polsby_Popper', 'average_Polsby_Popper'] else 'min'
+
+    # Sort plans by deviation and then compactness (descending if 'max')
+    scored_plans = [((upper_bounds[i][0], upper_bounds[i][1]), plans[i], lower_bounds[i]) for i in range(len(plans))]
+    scored_plans.sort(key=lambda x: (x[0][0], -x[0][1] if compactness_sense == 'max' else x[0][1]))    
+    best_compactness = None
+    
+    for (deviation, compactness_ub), plan, lb in scored_plans:
+        if best_compactness is None or (
+            (compactness_ub > best_compactness) if compactness_sense == 'max' else (compactness_ub < best_compactness)):
+            best_compactness = compactness_ub
+            pareto_upper_bounds.append([deviation, compactness_ub])
+            pareto_lower_bounds.append(lb)
+            pareto_plans.append(plan)
+
+    sorted_tuples = sorted(zip(pareto_upper_bounds, pareto_lower_bounds, pareto_plans), key=lambda x: x[0][0])
+    upper_bounds = [t[0] for t in sorted_tuples]
+    lower_bounds = [t[1] for t in sorted_tuples]
+    plans = [t[2] for t in sorted_tuples] 
+    return (upper_bounds, lower_bounds, plans)  
 
 def plot_pareto_frontiers(G, method='epsilon_constraint_method', plans=None, obj_types='cut_edges', ideal_population=None, state=None, filepath=None, filename2=None, no_solution_region=None, year=None, result=None):
     max_deviation = 0.01 * ideal_population
@@ -616,7 +612,7 @@ def plot_pareto_frontiers(G, method='epsilon_constraint_method', plans=None, obj
             extra_colors = None
         
         pareto.tighten_lower_bounds()
-    
+        
         # Determine y-axis limits
         upper_bounds = pareto.upper_bounds
         max_obj = max(upper_bound[1] for upper_bound in upper_bounds)
