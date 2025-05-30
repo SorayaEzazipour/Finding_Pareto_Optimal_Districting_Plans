@@ -170,10 +170,10 @@ def enumerate_top_districts(G, obj_type='cut_edges', year=2020, enumeration_limi
     m.addConstrs(x[i,0] + x[i,1] == 1 for i in G.nodes)
 
     # add population balance constraints for district and its complement
-    m.addConstr(sum( G.nodes[i]['TOTPOP'] * x[i,0] for i in G.nodes) >= G._L*G._size)
-    m.addConstr(sum( G.nodes[i]['TOTPOP'] * x[i,0] for i in G.nodes) <= G._U*G._size )
-    m.addConstr(sum( G.nodes[i]['TOTPOP'] * x[i,1] for i in G.nodes) >= (G._k-G._size)*G._L)
-    m.addConstr(sum( G.nodes[i]['TOTPOP'] * x[i,1] for i in G.nodes) <= (G._k-G._size)*G._U)
+    m.addConstr(sum(G.nodes[i]['TOTPOP'] * x[i,0] for i in G.nodes) >= G._L*G._size)
+    m.addConstr(sum(G.nodes[i]['TOTPOP'] * x[i,0] for i in G.nodes) <= G._U*G._size )
+    m.addConstr(sum(G.nodes[i]['TOTPOP'] * x[i,1] for i in G.nodes) >= (G._k-G._size)*G._L)
+    m.addConstr(sum(G.nodes[i]['TOTPOP'] * x[i,1] for i in G.nodes) <= (G._k-G._size)*G._U)
 
     # fix root to be in first district
     if G._root is None:
@@ -212,11 +212,11 @@ def enumerate_top_districts(G, obj_type='cut_edges', year=2020, enumeration_limi
     
     # add objective
     obj = m.addVar()
-    m.setObjective( obj, GRB.MINIMIZE)
+    m.setObjective(obj, GRB.MINIMIZE)
     
     if obj_type == 'cut_edges':
         
-        m.addConstr( obj == gp.quicksum(is_cut) )
+        m.addConstr(obj == gp.quicksum(is_cut))
     
     elif obj_type == 'perimeter':
         
@@ -227,12 +227,12 @@ def enumerate_top_districts(G, obj_type='cut_edges', year=2020, enumeration_limi
         
         # area of district
         A = m.addVar() 
-        m.addConstr(A == sum( G.nodes[i]['area'] * x[i,0] for i in G.nodes))
+        m.addConstr(A == sum(G.nodes[i]['area'] * x[i,0] for i in G.nodes))
 
         # perimeter of district
         P = m.addVar() 
-        m.addConstr( P == sum( G.edges[u,v]['shared_perim'] * is_cut[u,v] for u,v in G.edges)
-                 + sum( G.nodes[i]['boundary_perim'] * x[i,0] for i in G.nodes if G.nodes[i]['boundary_node']))
+        m.addConstr(P == sum(G.edges[u,v]['shared_perim'] * is_cut[u,v] for u,v in G.edges)
+                 + sum(G.nodes[i]['boundary_perim'] * x[i,0] for i in G.nodes if G.nodes[i]['boundary_node']))
 
         # relate inverse polsby-popper score 'obj' to A and P
         m.addConstr(P * P <= 4 * math.pi * A * obj)
