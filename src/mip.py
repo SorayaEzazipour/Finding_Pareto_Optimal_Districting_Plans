@@ -5,16 +5,12 @@
 # @author: sezazip
 # """
 
-import ordering
-import mip_fixing
-import mip_objective
-import mip_contiguity
+import ordering, mip_fixing, mip_objective, mip_contiguity
 import gurobipy as gp
 from gurobipy import GRB
 import math
-from metrics import*
+from metrics import *
 import networkx as nx
-from gurobipy import Model, quicksum
 
 #############################     gurobi_status    ####################################
 #############################     gurobi_status    ####################################
@@ -57,41 +53,37 @@ def gurobi_status(s):
 #############################     labeling_model    ####################################
 #############################     labeling_model    ####################################
 
-def labeling_model(
-                  G, deviation_persons, obj_type, contiguity='lcut', cutoff=None, verbose=False,
-                   warm_start=None, time_limit=7200, sizes=None, multiplier=0, max_B=False,
-                   symmetry_breaking=None,  similarity=None):
+def labeling_model(G, deviation_persons, obj_type, contiguity='lcut', cutoff=None, verbose=False,
+                   warm_start=None, time_limit=7200, sizes=None, max_B=False,
+                   symmetry_breaking=None, similarity=None):
     
     G._L = math.ceil(G._ideal_population - deviation_persons)
     G._U = math.floor(G._ideal_population + deviation_persons)
-    print(f'L = {G._L} and U = {G._U}' )
-    
     k = G._k
+    print(f'L = {G._L} and U = {G._U} and k = {k}' )
 
     m = gp.Model()
-    
     if not verbose:
         m.Params.OutputFlag = 0
     m._G = G
-    m._sizes = sizes
     
-    if multiplier == 0:
-        m._sizes = [1 for _ in range(k)]    
+    if sizes is None:
+        sizes = [1 for _ in range(k)]    
+    m._sizes = sizes
     print('sizes = ', m._sizes)
+    
     m._x = m.addVars(G.nodes, range(len(m._sizes)), name='x', vtype=GRB.BINARY)
     m._r = m.addVars(G.nodes, range(len(m._sizes)), name='r', vtype=GRB.BINARY)
     
     # add constraints saying that each node i is assigned to one district
-    m.addConstrs(gp.quicksum(m._x[i, j] for j in range(len(m._sizes))) == 1 for i in G.nodes)
+    m.addConstrs(sum(m._x[i, j] for j in range(len(m._sizes))) == 1 for i in G.nodes)
     
     # add constraints saying that if node i roots district j, then i should be in district j
     m.addConstrs(m._r[i, j] <= m._x[i, j] for i in G.nodes for j in range(len(m._sizes)))
     
-    #m.addConstrs(gp.quicksum(m._r[i, j] for i in G.nodes) == 1 for j in range(len(m._sizes)))   
-
     # add constraints saying that each district has population at least L and at most U
-    m.addConstrs(gp.quicksum(G.nodes[i]['TOTPOP'] * m._x[i, j] for i in G.nodes) >= G._L * m._sizes[j] for j in range(len(m._sizes)))
-    m.addConstrs(gp.quicksum(G.nodes[i]['TOTPOP'] * m._x[i, j] for i in G.nodes) <= G._U * m._sizes[j] for j in range(len(m._sizes)))
+    m.addConstrs(sum(G.nodes[i]['TOTPOP'] * m._x[i, j] for i in G.nodes) >= G._L * m._sizes[j] for j in range(len(m._sizes)))
+    m.addConstrs(sum(G.nodes[i]['TOTPOP'] * m._x[i, j] for i in G.nodes) <= G._U * m._sizes[j] for j in range(len(m._sizes)))
     
     DG = nx.DiGraph(G)
     DG._k = G._k
@@ -104,27 +96,23 @@ def labeling_model(
     m.addConstrs(m._x[u, j] - m._x[v, j] <= m._y[u, v, j] for u, v in DG.edges for j in range(len(m._sizes)))
     
     m._is_cut = m.addVars(DG.edges, vtype=GRB.BINARY)
-    m.addConstrs(m._is_cut[u, v] == gp.quicksum(m._y[u, v, j] for j in range(len(m._sizes))) for u, v in DG.edges)
-    m.addConstrs(m._is_cut[u, v] == gp.quicksum(m._y[v, u, j] for j in range(len(m._sizes))) for u, v in DG.edges)
-    #m.addConstrs( m._is_cut[min(u,v),max(u,v)] == gp.quicksum( m._y[u,v,j] for j in range(len(m._sizes)))  for u,v in DG.edges )
-
+    m.addConstrs(m._is_cut[u, v] == sum(m._y[u, v, j] for j in range(len(m._sizes))) for u, v in DG.edges)
+    m.addConstrs(m._is_cut[u, v] == sum(m._y[v, u, j] for j in range(len(m._sizes))) for u, v in DG.edges)
+    #m.addConstrs( m._is_cut[min(u,v),max(u,v)] == sum( m._y[u,v,j] for j in range(len(m._sizes)))  for u,v in DG.edges )
      
     if obj_type == 'cut_edges':
-        mip_objective.add_cut_edges_objective(m, G, multiplier=multiplier)
+        mip_objective.add_cut_edges_objective(m, G)
     elif obj_type == 'perimeter':
-        mip_objective.add_perimeter_objective(m, DG, multiplier=multiplier)
+        mip_objective.add_perimeter_objective(m, DG)
     elif obj_type == 'inverse_Polsby_Popper':
-        mip_objective.add_inverse_Polsby_Popper_objective(m, DG, multiplier=multiplier)
+        mip_objective.add_inverse_Polsby_Popper_objective(m, DG)
     elif obj_type == 'average_Polsby_Popper':
-        mip_objective.add_average_Polsby_Popper_objective(m, DG, multiplier=multiplier)
+        mip_objective.add_average_Polsby_Popper_objective(m, DG)
     elif obj_type == 'bottleneck_Polsby_Popper':      
-        mip_objective.add_bottleneck_Polsby_Popper_objective(m, DG, multiplier=multiplier)
-    #elif obj_type == 'stay_in_old_districts':
-     #   mip_objective.stay_in_old_districts(m, G, old_districts)
+        mip_objective.add_bottleneck_Polsby_Popper_objective(m, DG)
     else:
         assert False, f"Unsupported objective encountered: {obj_type}"
     
-            
     m._callback = None
     m._numCallbacks = 0
     m._numLazyCuts = 0
@@ -141,12 +129,10 @@ def labeling_model(
     if symmetry_breaking == 'rsum':
         add_symmetry_breaking_constraints(m, DG)          
         
-        
     if contiguity == 'lcut':
         if symmetry_breaking == None:
-            
             #Each district should have a root
-            m.addConstrs(gp.quicksum(m._r[i, j] for i in G.nodes) == 1 for j in range(len(m._sizes)))   
+            m.addConstrs(sum(m._r[i, j] for i in G.nodes) == 1 for j in range(len(m._sizes)))   
         m._DG = DG
         m.Params.LazyConstraints = 1
         m._callback = mip_contiguity.lcut_callback
@@ -157,7 +143,7 @@ def labeling_model(
         add_symmetry_breaking_constraints(m, G)
         mip_contiguity.add_shir_constraints(m, G)
     else:
-        print("ERROR: This contiguity constraint is not supported:", contiguity)
+        assert False, f"ERROR: contiguity constraint {contiguity} is not supported."
 
     if warm_start:
         print("Applying warm start!")
@@ -167,41 +153,27 @@ def labeling_model(
         orbitope_friendly_labeling = get_orbitope_friendly_labeling(DG, labeling)
         inject_warm_start(m, DG, orbitope_friendly_labeling)
         
-        # for j, district in enumerate(warm_start):
-        #     if district:  
-        #         best_i = max(district, key=lambda i: G.nodes[i]['TOTPOP'])
-        #         m._r[best_i, j].LB = 1
-    
     # speedup that exploits articulation points   
     articulation_pts = list(nx.articulation_points(G)) 
-
     for j in range(k - 1):
         for v in articulation_pts:
-            Vv = [i for i in G.nodes if i != v]
+            Vv = [ i for i in G.nodes if i != v ]
             for component in nx.connected_components(G.subgraph(Vv)):
-                population = sum(G.nodes[i]['TOTPOP'] for i in component)
+                population = sum( G.nodes[i]['TOTPOP'] for i in component )
                 if population < G._L:
-                    m.addConstrs(m._x[v, j] == m._x[w, j] for w in component)
+                    m.addConstrs( m._x[v, j] == m._x[w, j] for w in component )
             
-                       
     #add similarity constraint if needed
     if similarity is not None:
-        m.addConstr(gp.quicksum(G.nodes[i]["TOTPOP2000"] * m._x[i, j] 
+        m.addConstr(sum(G.nodes[i]["TOTPOP2000"] * m._x[i, j] 
                         for j in range(G._k) for i in similarity[0][j]) >= similarity[1])
   
-    # for i in G.nodes:
-    #     for j in range(k):
-    #         root_priority = 10 if m._r[i, j].LB == 1 else 1
-    #         m._x[i, j].BranchPriority = root_priority
-
-            
     if cutoff is not None:
         m.Params.Cutoff = cutoff
     m.Params.MIPGap = 0.00
     m.Params.FeasibilityTol = 1e-7
     m.Params.TimeLimit = time_limit
     m.Params.IntFeasTol = 1e-7
-
     m.optimize(m._callback)
     
     if m.solCount > 0:
@@ -219,10 +191,10 @@ def labeling_model(
             return solution, m.objVal, m.objBound, int(m.status)
     else:
         print("No feasible solution found." if m.status != GRB.Status.TIME_LIMIT else "Time limit reached, but no feasible solution found.")
-        return None, None, None, int(m.status)
+        return ( None, None, None, int(m.status) )
 
-############################# add_partitioning_orbitope_constraints####################################
-############################# add_partitioning_orbitope_constraints####################################
+############################# add_partitioning_orbitope_constraints ####################################
+############################# add_partitioning_orbitope_constraints ####################################
 def add_partitioning_orbitope_constraints(m, G):
 
     s = m.addVars(G.nodes, G._k, name='s')
@@ -246,70 +218,58 @@ def add_partitioning_orbitope_constraints(m, G):
     m.update()
     return
 
-############################# get_orbitope_friendly_labeling####################################
-############################# get_orbitope_friendly_labeling####################################
+############################# get_orbitope_friendly_labeling ####################################
+############################# get_orbitope_friendly_labeling ####################################
 
 # We need to be careful because of partitioning orbitope constraints. 
 #   For each district, find its earliest vertex in the ordering,
 #   then sort these earliest vertices to get the district labels
 #    
 def get_orbitope_friendly_labeling(G, unfriendly_labeling):    
-    
     district_map = { j : -1 for j in range(G._k) }
     labeling = { i : -1 for i in G.nodes }
     count = 0
-    
     for i in G._ordering:
         j = unfriendly_labeling[i]
-        
         # have we found earliest vertex from district j?
         if district_map[j] == -1:
-            
             # if so, then vertex i roots district 'j' in unmapped labeling,
             #   and anything labeled 'j' should instead be relabeled 'count'
             district_map[j] = count
             count += 1
-        
         labeling[i] = district_map[j]
-        
     return labeling
 
-#############################inject_warm_start####################################
-############################# inject_warm_start####################################
+############################# inject_warm_start ####################################
+############################# inject_warm_start ####################################
     
 def inject_warm_start(m, G, labeling):
-
-    # initialize all variables to 0
+    # init vars to 0
     for i in G._ordering:
         for j in range(G._k):
             m._x[i,j].start = 0
             m._r[i,j].start = 0
-            
     for u,v in G.edges:
         for j in range(G._k):
             m._y[u,v,j].start = 0
     
-    # now inject the nonzeros of our solution
+    # next, inject nonzeros of solution
     root_found = { j : False for j in range(G._k) }
     for i in G._ordering:
-        
         j = labeling[i]
         m._x[i,j].start = 1
-        
         if not root_found[j]:
             root_found[j] = True
             m._r[i,j].start = 1
-        
     for u,v in G.edges:
         j = labeling[u]
         if labeling[v] != j:
             m._y[u,v,j].start = 1
-    
     m.update()
-    
     return
-#############################add_symmetry_breaking_constraints####################################
-############################# add_symmetry_breaking_constraints####################################
+    
+############################# add_symmetry_breaking_constraints ####################################
+############################# add_symmetry_breaking_constraints ####################################
 
 def add_symmetry_breaking_constraints(m, G):
     DG = nx.DiGraph(G)  
@@ -318,13 +278,13 @@ def add_symmetry_breaking_constraints(m, G):
     if m._sizes[0] == 1 and len(m._sizes) == 2: 
         rsum = m.addVars(DG.nodes, range(len(m._sizes)), vtype=GRB.BINARY, name="rsum")
         nodes_list = list(DG.nodes)
-        m.addConstrs(m._x[i, j] <= rsum[i, j] for i in DG.nodes for j in range(len(m._sizes)))
+        m.addConstrs(m._x[i,j] <= rsum[i,j] for i in DG.nodes for j in range(len(m._sizes)))
         for p in range(len(nodes_list)):
             i = nodes_list[p]  
-            if p == 0:
-                m.addConstrs(rsum[i, j] == m._r[i, j] for j in range(len(m._sizes)))
+            if p==0:
+                m.addConstrs(rsum[i, j]==m._r[i, j] for j in range(len(m._sizes)))
             else:
                 previous_node = nodes_list[p-1]
-                m.addConstrs(rsum[i, j] == rsum[previous_node, j] + m._r[i, j] for j in range(len(m._sizes)))
+                m.addConstrs(rsum[i, j]==rsum[previous_node, j] + m._r[i, j] for j in range(len(m._sizes)))
     m.update()
     return
