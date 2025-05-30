@@ -116,8 +116,7 @@ class ParetoFrontier:
                 alpha=0.3,
                 hatch='X',
                 edgecolor='red',
-                linewidth=0.5,
-            )
+                linewidth=0.5)
             
         # Plot any additional points (e.g., enacted map or other specific plans) with specific colors
         if extra_points:
@@ -130,8 +129,8 @@ class ParetoFrontier:
                     'o',
                     color=color,
                     markersize=10,
-                    label=label,
-                )
+                    label=label)
+                
                 # Optionally, add dashed lines for better visualization
                 ax.plot([deviation, deviation], [ax.get_ylim()[0], objective_value], color=color, linestyle='--', alpha=0.0, linewidth=1)
                 ax.plot([0, deviation], [objective_value, objective_value], color=color, linestyle='--', alpha=0.0, linewidth=1)
@@ -268,8 +267,7 @@ class ParetoFrontier:
             ax.set_ylim(*o2lim)
     
         plt.tight_layout()
-        plt.show()
-    
+        plt.show()  
         
     def plot_with_custom_x_ranges(self, method='epsilon_constraint_method', splits=None, 
                                   o1lim=None, o2lim=None, no_solution_region=None, extra_points=None, extra_colors=None):
