@@ -375,7 +375,7 @@ class ParetoFrontier:
             
                
                 yticks[-1] = new_last_tick
-                labels = []
+                labels = list()
             
                 for y in yticks:
                     if abs(y) < 1:
@@ -403,7 +403,7 @@ class ParetoFrontier:
         ax.set_axisbelow(False)
     
         seen_points = set()
-        all_points = []
+        all_points = list()
     
         for frontier, label, color, marker in zip(frontiers, labels, colors, markers):
             for point in frontier.upper_bounds:
@@ -412,8 +412,8 @@ class ParetoFrontier:
                     seen_points.add(key)
                     all_points.append((point[0], point[1], label, color, marker))
     
-        non_dominated = []
-        dominated = []
+        non_dominated = list()
+        dominated = list()
     
         for i, (x1, y1, method1, color1, marker1) in enumerate(all_points):
             dominated_flag = False
