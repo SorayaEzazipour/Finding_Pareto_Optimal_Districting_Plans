@@ -216,12 +216,10 @@ class ParetoFrontier:
                     label=label)
             ax.legend(loc='best')
         
-        
         sorted_indices = np.argsort([p[0] for p in self.upper_bounds])
         sorted_points = [self.upper_bounds[i] for i in sorted_indices]
         sorted_lower_bounds = [self.lower_bounds[i] for i in sorted_indices]
         rightmost_x = o1lim[1]
-        
             
         for i in range(len(sorted_points)):
             current_dev = sorted_points[i][0]
@@ -467,14 +465,13 @@ class ParetoFrontier:
         plt.tight_layout()
         plt.show()
     
-
-    def draw_plans(self, G, filepath, filename):
+    def draw_plans(self, G, filepath, filename, year=2020):
         ideal_population = sum(G.nodes[i]['TOTPOP'] for i in G.nodes) / len(self.plans[0])
         for (plan, upper_bound) in zip(self.plans, self.upper_bounds):
             title = f"{round(upper_bound[0],2)}-person deviation ({round(100 * upper_bound[0] / ideal_population, 4)}%), {round(upper_bound[1], 4)} {self.obj_names[1]}"
-            draw_plan(filepath=filepath, filename=filename, G=G, plan=plan, title=title) 
-
-            
+            draw_plan(filepath=filepath, filename=filename, G=G, plan=plan, title=title, year=year)
+         
+        
 def filter_and_sort_pareto(plans, upper_bounds=None, lower_bounds=None, obj_type='cut_edges'):
     if upper_bounds is None and lower_bounds is None:
         raise ValueError("At least one of 'upper_bounds' or 'lower_bounds' must be provided.")
