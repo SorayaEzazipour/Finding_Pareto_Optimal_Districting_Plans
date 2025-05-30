@@ -2,7 +2,9 @@ import networkx as nx
 import gurobipy as gp
 from gurobipy import GRB
 import math
-from metrics import district_objective
+import time
+from math import ceil, floor
+from metrics import*
 
 # Finds a minimal vertex subset that separates component from vertex b in digraph DG.
 #
@@ -11,11 +13,11 @@ from metrics import district_objective
 #   Mathematical Programming Computation 9.2 (2017): 203-229.
 #
 def find_minimal_separator(DG, component, b):
-    neighbors_component = { i : False for i in DG.nodes }
+    neighbors_component = {i : False for i in DG.nodes}
     for i in nx.node_boundary(DG, component, None):
         neighbors_component[i] = True
     
-    visited = { i : False for i in DG.nodes }
+    visited = {i : False for i in DG.nodes}
     child = [b]
     visited[b] = True
     
@@ -29,7 +31,7 @@ def find_minimal_separator(DG, component, b):
                         child.append(j)
                         visited[j] = True
     
-    C = [ i for i in DG.nodes if neighbors_component[i] and visited[i] ]
+    C = [i for i in DG.nodes if neighbors_component[i] and visited[i]]
     return C
 
 # Gurobi callback function, 
@@ -42,7 +44,7 @@ def callback_function(m, where):
         best_bound = m.cbGet(GRB.Callback.MIPNODE_OBJBND)
         if best_bound >= m._cutoff:
             DG = m._DG
-            m.cbLazy( m._x[DG._root,0] <= -1 )
+            m.cbLazy(m._x[DG._root,0] <= -1)
             m._exit = True
     
     # check if LP relaxation at this branch-and-bound node has an integer solution
@@ -55,12 +57,12 @@ def callback_function(m, where):
     DG = m._DG
     
     district = [ i for i in DG.nodes if xval[i,0] > 0.5 ]
-    assert nx.is_strongly_connected( DG.subgraph(district) )
+    assert nx.is_strongly_connected(DG.subgraph(district))
     objval = district_objective(DG, district, m._obj_type)
     
     # is complement connected? if so, we may be able to build a plan from this district
-    complement = [ i for i in DG.nodes if xval[i,1] > 0.5 ]
-    if len(complement)==1 or nx.is_strongly_connected( DG.subgraph(complement) ):
+    complement = [i for i in DG.nodes if xval[i,1] > 0.5]
+    if len(complement)==1 or nx.is_strongly_connected(DG.subgraph(complement)):
         
         if m._verbose:
             print("found", district,"with objective =",objval)
@@ -68,8 +70,8 @@ def callback_function(m, where):
         
         if m._number_of_districts < m._enumeration_limit:
             
-            m._districts.append( district )
-            m._objectives.append( objval )
+            m._districts.append(district)
+            m._objectives.append(objval)
             m._number_of_districts += 1
             if m._verbose:
                 print("   ^added to list!")
@@ -96,47 +98,48 @@ def callback_function(m, where):
                 
         # hack to disallow worse solutions
         if add_no_worse_cut:
-            new_worst_obj = max( m._objectives[j] for j in range(m._enumeration_limit) )
+            new_worst_obj = max(m._objectives[j] for j in range(m._enumeration_limit))
             if m._verbose:
                 print("adding cut saying that objective should be less than",new_worst_obj)
             if m._obj_type == 'cut_edges':
+                
                 # exploit integrality of cut_edges objective. If worst is 12, then cutoff is 11.00...01
-                m._cutoff = min( m._cutoff, new_worst_obj - (1 - 1e-6) ) 
+                m._cutoff = min(m._cutoff, new_worst_obj - (1 - 1e-6)) 
             else:
-                m._cutoff = min( m._cutoff, new_worst_obj - 1e-6 )
-            m.cbLazy( m._obj <= m._cutoff )
+                m._cutoff = min(m._cutoff, new_worst_obj - 1e-6)
+            m.cbLazy(m._obj <= m._cutoff)
             
         # add no-good cut
-        m.cbLazy( gp.quicksum( m._x[i,1] for i in district ) + gp.quicksum( m._x[i,0] for i in complement ) >= 1 )
+        m.cbLazy(gp.quicksum(m._x[i,1] for i in district ) + gp.quicksum(m._x[i,0] for i in complement) >= 1)
         
     # if complement is disconnected....
     else:
         # find a maximum population component
         b = None
         max_component_population = -1
-        for component in nx.strongly_connected_components( DG.subgraph(complement) ):
-            component_population = sum( DG.nodes[i]['TOTPOP'] for i in component )
+        for component in nx.strongly_connected_components(DG.subgraph(complement)):
+            component_population = sum(DG.nodes[i]['TOTPOP'] for i in component)
             if component_population > max_component_population:
 
                 # find a maximum population vertex 'b' from this component
                 max_component_population = component_population
-                max_vertex_population = max( DG.nodes[i]['TOTPOP'] for i in component )
-                max_population_vertices = [ i for i in component if DG.nodes[i]['TOTPOP'] == max_vertex_population ]
+                max_vertex_population = max(DG.nodes[i]['TOTPOP'] for i in component)
+                max_population_vertices = [i for i in component if DG.nodes[i]['TOTPOP'] == max_vertex_population]
                 b = max_population_vertices[0]
 
         # each other component (besides b's), find some vertex 'a' and add cut.
-        for component in nx.strongly_connected_components( DG.subgraph(complement) ):
+        for component in nx.strongly_connected_components(DG.subgraph(complement)):
             if b in component:
                 continue
 
             # find a maximum population vertex 'a' from this component
-            max_vertex_population = max( DG.nodes[i]['TOTPOP'] for i in component )
-            max_population_vertices = [ i for i in component if DG.nodes[i]['TOTPOP'] == max_vertex_population ]
+            max_vertex_population = max(DG.nodes[i]['TOTPOP'] for i in component)
+            max_population_vertices = [i for i in component if DG.nodes[i]['TOTPOP'] == max_vertex_population]
             a = max_population_vertices[0]
 
             # add a,b-separator inequality
             C = find_minimal_separator(DG, component, b)
-            m.cbLazy( m._x[a,1] + m._x[b,1] <= 1 + gp.quicksum( m._x[c,1] for c in C ) )
+            m.cbLazy(m._x[a,1] + m._x[b,1] <= 1 + gp.quicksum(m._x[c,1] for c in C))
 
 
 # key:    ( tuple(sorted(G.nodes)), G._L, G._U, G._k, G._size, obj_type)
@@ -151,9 +154,8 @@ def enumerate_top_districts(G, obj_type='cut_edges', year=2020, enumeration_limi
     assert obj_type in {'cut_edges', 'perimeter', 'inverse_polsby_popper'}
 
     # use cache to exit early?
-    key = ( tuple(sorted(G.nodes)), G._L, G._U, G._k, G._size, obj_type )
+    key = (tuple(sorted(G.nodes)), G._L, G._U, G._k, G._size, obj_type)
     if cache and key in etd_cache:
-        #print( "Used cache!" )
         return etd_cache[key]
     
     # build model
@@ -165,21 +167,19 @@ def enumerate_top_districts(G, obj_type='cut_edges', year=2020, enumeration_limi
     x = m.addVars(G.nodes, 2, vtype=GRB.BINARY)
 
     # each vertex is assigned to one district
-    m.addConstrs( x[i,0] + x[i,1] == 1 for i in G.nodes )
+    m.addConstrs(x[i,0] + x[i,1] == 1 for i in G.nodes)
 
     # add population balance constraints for district and its complement
-    m.addConstr( gp.quicksum( G.nodes[i]['TOTPOP'] * x[i,0] for i in G.nodes ) >= G._L*G._size )
-    m.addConstr( gp.quicksum( G.nodes[i]['TOTPOP'] * x[i,0] for i in G.nodes ) <= G._U*G._size )
-    m.addConstr( gp.quicksum( G.nodes[i]['TOTPOP'] * x[i,1] for i in G.nodes ) >= (G._k-G._size)*G._L )
-    m.addConstr( gp.quicksum( G.nodes[i]['TOTPOP'] * x[i,1] for i in G.nodes ) <= (G._k-G._size)*G._U )
+    m.addConstr(sum( G.nodes[i]['TOTPOP'] * x[i,0] for i in G.nodes) >= G._L*G._size)
+    m.addConstr(sum( G.nodes[i]['TOTPOP'] * x[i,0] for i in G.nodes) <= G._U*G._size )
+    m.addConstr(sum( G.nodes[i]['TOTPOP'] * x[i,1] for i in G.nodes) >= (G._k-G._size)*G._L)
+    m.addConstr(sum( G.nodes[i]['TOTPOP'] * x[i,1] for i in G.nodes) <= (G._k-G._size)*G._U)
 
     # fix root to be in first district
     if G._root is None:
-        max_population = max( G.nodes[i]['TOTPOP'] for i in G.nodes )
-        G._root = [ i for i in G.nodes if G.nodes[i]['TOTPOP']==max_population ][0]
-        
+        max_population = max(G.nodes[i]['TOTPOP'] for i in G.nodes)
+        G._root = [i for i in G.nodes if G.nodes[i]['TOTPOP']==max_population][0]  
     x[G._root,0].LB = 1
-    
     if year == 2010:
         name = 'NAME10'
     else:
@@ -201,14 +201,14 @@ def enumerate_top_districts(G, obj_type='cut_edges', year=2020, enumeration_limi
 
     # add flow-based contiguity constraints (Shirabe) for first district
     f = m.addVars(DG.edges)
-    m.addConstrs( gp.quicksum( f[j,i] - f[i,j] for j in G.neighbors(i) ) == x[i,0] for i in G.nodes if i != G._root )
-    m.addConstrs( gp.quicksum( f[j,i] for j in G.neighbors(i) ) <= M * x[i,0] for i in G.nodes if i != G._root )
-    m.addConstr( gp.quicksum( f[j,G._root] for j in G.neighbors(G._root) ) == 0 )
+    m.addConstrs(sum(f[j,i] - f[i,j] for j in G.neighbors(i)) == x[i,0] for i in G.nodes if i != G._root)
+    m.addConstrs(sum(f[j,i] for j in G.neighbors(i)) <= M * x[i,0] for i in G.nodes if i != G._root)
+    m.addConstr(sum(f[j,G._root] for j in G.neighbors(G._root)) == 0)
     
     # cut edge vars
     is_cut = m.addVars(G.edges, vtype=GRB.BINARY)
-    m.addConstrs( x[i,0]-x[j,0] <= is_cut[i,j] for i,j in G.edges )
-    m.addConstrs( x[j,0]-x[i,0] <= is_cut[i,j] for i,j in G.edges )
+    m.addConstrs(x[i,0]-x[j,0] <= is_cut[i,j] for i,j in G.edges)
+    m.addConstrs(x[j,0]-x[i,0] <= is_cut[i,j] for i,j in G.edges)
     
     # add objective
     obj = m.addVar()
@@ -221,21 +221,21 @@ def enumerate_top_districts(G, obj_type='cut_edges', year=2020, enumeration_limi
     elif obj_type == 'perimeter':
         
         # perimeter_length = within_state_perimeter + state_boundary_perimeter
-        m.addConstr( obj == gp.quicksum( G.edges[i,j]['shared_perim'] * is_cut[i,j] for i,j in G.edges ) 
-                    + gp.quicksum( G.nodes[i]['boundary_perim'] * x[i,0] for i in G.nodes if G.nodes[i]['boundary_node'] ) )
+        m.addConstr(obj == sum(G.edges[i,j]['shared_perim'] * is_cut[i,j] for i,j in G.edges) 
+                    + sum(G.nodes[i]['boundary_perim'] * x[i,0] for i in G.nodes if G.nodes[i]['boundary_node']))
     elif obj_type == 'inverse_polsby_popper':
         
         # area of district
         A = m.addVar() 
-        m.addConstr( A == gp.quicksum( G.nodes[i]['area'] * x[i,0] for i in G.nodes ) )
+        m.addConstr(A == sum( G.nodes[i]['area'] * x[i,0] for i in G.nodes))
 
         # perimeter of district
         P = m.addVar() 
-        m.addConstr( P == gp.quicksum( G.edges[u,v]['shared_perim'] * is_cut[u,v] for u,v in G.edges )
-                 + gp.quicksum( G.nodes[i]['boundary_perim'] * x[i,0] for i in G.nodes if G.nodes[i]['boundary_node'] ) )
+        m.addConstr( P == sum( G.edges[u,v]['shared_perim'] * is_cut[u,v] for u,v in G.edges)
+                 + sum( G.nodes[i]['boundary_perim'] * x[i,0] for i in G.nodes if G.nodes[i]['boundary_node']))
 
         # relate inverse polsby-popper score 'obj' to A and P
-        m.addConstr( P * P <= 4 * math.pi * A * obj )
+        m.addConstr(P * P <= 4 * math.pi * A * obj)
 
     else:
         print("Objective type",obj_type,"is not supported.")
@@ -264,18 +264,18 @@ def enumerate_top_districts(G, obj_type='cut_edges', year=2020, enumeration_limi
     
     # speedup that exploits articulation points
     for v in nx.articulation_points(G):
-        Vv = [ i for i in G.nodes if i != v ]
-        for component in nx.connected_components( G.subgraph(Vv) ):
-            population = sum( G.nodes[i]['TOTPOP'] for i in component )
+        Vv = [i for i in G.nodes if i != v]
+        for component in nx.connected_components(G.subgraph(Vv)):
+            population = sum(G.nodes[i]['TOTPOP'] for i in component)
             case1 = population < G._L*G._size and G._root in component
             case2 = population < G._L*(G._k-G._size) and G._root not in component
             if case1 or case2:
-                m.addConstrs( m._x[v,0] == m._x[w,0] for w in component )
+                m.addConstrs(m._x[v,0] == m._x[w,0] for w in component)
 
     # solve
     if time_limit is not None:
         m.Params.TimeLimit = time_limit
-    m.optimize( m._callback )
+    m.optimize(m._callback)
 
     # add solution to our cache and return
     if cache:
@@ -286,8 +286,8 @@ def enumerate_top_districts(G, obj_type='cut_edges', year=2020, enumeration_limi
 def districting_heuristic(G, obj_type='cut_edges', year=2020, enumeration_limit=10):
     
     G._size = 1
-    districts = enumerate_top_districts( G, obj_type=obj_type, year=year, enumeration_limit=enumeration_limit )
-    partial_plans = [ [district] for district in districts ]
+    districts = enumerate_top_districts(G, obj_type=obj_type, year=year, enumeration_limit=enumeration_limit)
+    partial_plans = [[district] for district in districts]
     plans = list()
     
     while partial_plans != list():
@@ -295,11 +295,11 @@ def districting_heuristic(G, obj_type='cut_edges', year=2020, enumeration_limit=
         partial_plan = partial_plans.pop()
         ndistricts = len(partial_plan)
         
-        used = [ i for j in range(ndistricts) for i in partial_plan[j] ]
-        unused = [ i for i in G.nodes if i not in used ]
+        used = [i for j in range(ndistricts) for i in partial_plan[j]]
+        unused = [i for i in G.nodes if i not in used ]
         
         if ndistricts == G._k - 1:
-            partial_plan.append( unused )
+            partial_plan.append(unused)
             plans.append(partial_plan)
             print("Finished plan #",len(plans))
             continue
@@ -330,10 +330,10 @@ def districting_heuristic(G, obj_type='cut_edges', year=2020, enumeration_limit=
              
             
         print("\n ***Seeking district #", ndistricts+1,"for partial plan",partial_plan)
-        districts = enumerate_top_districts( H, obj_type=obj_type, year=year, enumeration_limit=enumeration_limit )
+        districts = enumerate_top_districts(H, obj_type=obj_type, year=year, enumeration_limit=enumeration_limit)
         for district in districts:
             new_partial_plan = partial_plan.copy()
-            new_partial_plan.append( district )
+            new_partial_plan.append(district)
             partial_plans.append(new_partial_plan)
         
     return plans 
@@ -344,12 +344,12 @@ def printif(condition, statement):
         print(statement)
 
     
-def iterative_refinement(G, L, U, k,  year=2020, enumeration_limit=10, enum_time_limit=600, break_size=1, cache=True, verbose=False):
+def iterative_refinement(G, L, U, k, year=2020, enumeration_limit=10, enum_time_limit=600, break_size=1, cache=True, verbose=False):
 
     # initializations
-    trivial_clustering = [ list(G.nodes) ]
-    county_clusterings = [ trivial_clustering ]
-    list_of_sizes = [ [k] ]
+    trivial_clustering = [list(G.nodes)]
+    county_clusterings = [trivial_clustering]
+    list_of_sizes = [[k]]
     plans = list()
 
     while county_clusterings != list():
@@ -359,16 +359,16 @@ def iterative_refinement(G, L, U, k,  year=2020, enumeration_limit=10, enum_time
         num_clusters = len(county_clustering)
         sizes = list_of_sizes.pop()
         
-        if all( size <= break_size for size in sizes ):
+        if all(size <= break_size for size in sizes):
             printif(verbose and break_size==1, "Found plan!")
-            plans.append( county_clustering )
+            plans.append(county_clustering)
             continue
 
         printif(verbose,f"Currently, sizes = {sizes}.")
         
         # pick a cluster to divide up?
-        min_size = min( size for size in sizes if size > break_size )
-        p = [ p for p in range(len(sizes)) if sizes[p] == min_size ][0]
+        min_size = min(size for size in sizes if size > break_size)
+        p = [p for p in range(len(sizes)) if sizes[p] == min_size][0]
         cluster = county_clustering[p]
 
         GS = G.subgraph(cluster).copy()
@@ -383,13 +383,49 @@ def iterative_refinement(G, L, U, k,  year=2020, enumeration_limit=10, enum_time
             GS._size = size
             GS._root = None
             printif(verbose,f"Trying sub-cluster sizes: {size} and {sizes[p]-size}.")
-            lefts = enumerate_top_districts( GS, obj_type='cut_edges', year=year, enumeration_limit=enumeration_limit, cache=cache, time_limit=enum_time_limit, verbose=False )
+            lefts = enumerate_top_districts(
+                GS, obj_type='cut_edges', year=year, enumeration_limit=enumeration_limit, 
+                cache=cache, time_limit=enum_time_limit, verbose=False)
 
             for left in lefts:
-                right = [ i for i in cluster if i not in left ]
+                right = [i for i in cluster if i not in left]
                 new_county_clustering = county_clustering[0:p] + [left, right] + county_clustering[p+1:num_clusters+1] 
-                new_sizes = sizes[0:p] + [ size, sizes[p] - size ] + sizes[p+1:num_clusters+1]
+                new_sizes = sizes[0:p] + [size, sizes[p] - size ] + sizes[p+1:num_clusters+1]
 
-                county_clusterings.append( new_county_clustering )
-                list_of_sizes.append( new_sizes )
+                county_clusterings.append(new_county_clustering)
+                list_of_sizes.append(new_sizes)
     return plans
+
+def generate_plans_with_refinement(G, ideal_population, state, year, enumeration_limit):
+    deviation = 0.5
+    max_deviation = 0.01 * ideal_population
+    plans = list()
+    first_feasible_dev = None
+
+    while True:
+        print()
+        print("*****************************************")
+        print(f"Trying deviation = {deviation}.")
+        print("*****************************************")
+
+        L = ceil(ideal_population - deviation)
+        U = floor(ideal_population + deviation)
+
+        start_time = time.perf_counter()
+        new_plans = iterative_refinement(G, L, U, G._k, year=year, enumeration_limit=enumeration_limit, verbose=False)
+        print("Total time =", round(time.perf_counter() - start_time, 2))
+
+        if new_plans:
+            plans += new_plans
+            if first_feasible_dev is None:
+                min_observed_dev = min(observed_deviation_persons(G, plan, ideal_population) for plan in new_plans)
+                first_feasible_dev = min_observed_dev
+
+        if deviation == max_deviation:
+            break
+
+        deviation *= 2
+        deviation = min(deviation, max_deviation)
+
+    save_plans(plans, state, year)
+    return plans, first_feasible_dev
