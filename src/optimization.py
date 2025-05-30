@@ -428,4 +428,4 @@ def generate_plans_with_refinement(G, ideal_population, state, year, enumeration
         deviation = min(deviation, max_deviation)
 
     save_plans(plans, state, year)
-    return plans, first_feasible_dev
+    return (plans, first_feasible_dev)
