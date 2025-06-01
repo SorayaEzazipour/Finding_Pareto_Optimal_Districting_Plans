@@ -548,7 +548,7 @@ def plot_pareto_frontiers(G, method='epsilon_constraint_method', plans=None, obj
             pareto[obj_type].tighten_lower_bounds()
             pareto[obj_type].plot_with_custom_x_ranges(method=method, splits=None, o1lim=o1lim, o2lim=o2lim,
                                                                                      no_solution_region=no_solution_region)
-            pareto[obj_type].draw_plans(G, filepath, filename2)
+            pareto[obj_type].draw_plans(G, filepath, filename2, year=year)
             pareto_plans[obj_type]= pareto[obj_type].plans
         return pareto_plans
         
