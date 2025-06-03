@@ -186,9 +186,9 @@ def labeling_model(G, deviation_persons, obj_type, contiguity='lcut', cutoff=Non
         if m.status == GRB.Status.TIME_LIMIT:
             print("Time limit reached! Best feasible solution found:")
         if obj_type in {"inverse_Polsby_Popper", "cut_edges", "perimeter"}:
-            return solution, m.objBound, m.objVal, int(m.status)
+            return ( solution, m.objVal, m.objBound, int(m.status) )
         else:
-            return solution, m.objVal, m.objBound, int(m.status)
+            return (solution, m.objBound, m.objVal, int(m.status) )
     else:
         print("No feasible solution found." if m.status != GRB.Status.TIME_LIMIT else "Time limit reached, but no feasible solution found.")
         return ( None, None, None, int(m.status) )

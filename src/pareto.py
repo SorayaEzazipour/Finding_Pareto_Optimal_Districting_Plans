@@ -468,7 +468,7 @@ class ParetoFrontier:
     def draw_plans(self, G, filepath, filename, year=2020):
         ideal_population = sum(G.nodes[i]['TOTPOP'] for i in G.nodes) / len(self.plans[0])
         for (plan, upper_bound) in zip(self.plans, self.upper_bounds):
-            title = f"{round(upper_bound[0],2)}-person deviation ({round(100 * upper_bound[0] / ideal_population, 4)}%), {round(upper_bound[1], 4)} {self.obj_names[1]}"
+            title = f"{round(upper_bound[0],2)}-person deviation ({round(100 * upper_bound[0] / ideal_population, 4)}%), {int(upper_bound[1]) if self.obj_names[1] == 'cut_edges' else round(upper_bound[1], 4)} {self.obj_names[1]}"
             draw_plan(filepath=filepath, filename=filename, G=G, plan=plan, title=title, year=year)
          
         
@@ -559,7 +559,7 @@ def plot_pareto_frontiers(G, method='epsilon_constraint_method', plans=None, obj
         print(f"\n{'#' * 100}\nPareto Frontier for state {state},  objective {obj_names[1]}\n{'#' * 100}\n")
         pareto = ParetoFrontier(senses, obj_names, state=state, level='county')
 
-        if not  result:
+        if not result:
             print("No plan found!")
         else:
             for plan, obj_bound, dev in result:
@@ -620,3 +620,5 @@ def plot_pareto_frontiers(G, method='epsilon_constraint_method', plans=None, obj
         pareto.plot_with_custom_x_ranges(method=method, splits=None, 
                                  o1lim=o1lim, o2lim=o2lim, no_solution_region = no_solution_region,
                                  extra_points=extra_points, extra_colors=extra_colors)  
+        pareto.draw_plans(G, filepath, filename2, year=year)
+        
