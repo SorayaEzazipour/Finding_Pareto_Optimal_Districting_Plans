@@ -170,10 +170,10 @@ def labeling_model(G, deviation_persons, obj_type, contiguity='lcut', cutoff=Non
   
     if cutoff is not None:
         m.Params.Cutoff = cutoff
-    m.Params.MIPGap = 0.00
     m.Params.FeasibilityTol = 1e-7
-    m.Params.TimeLimit = time_limit
     m.Params.IntFeasTol = 1e-7
+    m.Params.MIPGap = 1e-7
+    m.Params.TimeLimit = time_limit
     m.optimize(m._callback)
     
     if m.solCount > 0:

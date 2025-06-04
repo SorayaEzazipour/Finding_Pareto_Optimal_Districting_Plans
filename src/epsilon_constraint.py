@@ -16,7 +16,7 @@ from optimization import iterative_refinement
 
 def epsilon_constraint_method(G, obj_type='bottleneck_Polsby_Popper', contiguity='lcut', cutoff=None,
                               verbose=False, warm_start_mode='refinement', warm_starts=None,
-                              starting_deviation=0.01, time_limit=7200, sizes=None, max_B=False, 
+                              starting_deviation=0.01, time_limit=7200, quick_time_limit=60, sizes=None, max_B=False, 
                               symmetry_breaking=None, similarity=None, state=None, year=2020):
     
     assert obj_type in { 'inverse_Polsby_Popper', 'cut_edges', 'perimeter',
@@ -91,6 +91,8 @@ def epsilon_constraint_method(G, obj_type='bottleneck_Polsby_Popper', contiguity
 
         if status != 2:
             print(f"\n{'*' * 40}\nNo optimal solution found! Gurobi status: {status}\n{'*' * 40}")
+            print(f"Time limit {time_limit} reached. Subsequent deviations will use quick time limit {quick_time_limit}.")
+            time_limit = quick_time_limit 
         else:
             print(f"\n{'*' * 40}\nOptimal solution found! Gurobi status: {status}\n{'*' * 40}")
 
