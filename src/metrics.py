@@ -89,7 +89,7 @@ def scores(G, plan, ideal_population, objective):
     elif objective == 'cut_edges':
         comp = cut_edges(G, plan)
     dev_abs = observed_deviation_persons(G, plan, ideal_population)
-    return [comp, 100 * dev_abs / ideal_population]
+    return [100 * dev_abs / ideal_population, comp]
 
 def check_county_clustering(G, clustering, sizes, year=None):
     all_assigned_nodes = set()
