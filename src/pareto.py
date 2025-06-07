@@ -61,13 +61,13 @@ class ParetoFrontier:
         self.upper_bounds, self.lower_bounds, self.plans = filter_and_sort_pareto(
            self.plans, self.upper_bounds, self.lower_bounds, self.obj_names[1])
        
-    def tighten_lower_bounds(self):
+    def tighten_bounds(self):
         for i in range(len(self.lower_bounds) - 2, -1, -1):
             if self.lower_bounds[i][1] != self.upper_bounds[i][1]:
                 if self.senses[1] == 'min':
                     self.lower_bounds[i][1] = max(self.lower_bounds[i][1], self.lower_bounds[i + 1][1])
                 else:
-                    self.lower_bounds[i][1] = min(self.lower_bounds[i][1], self.lower_bounds[i + 1][1])
+                    self.upper_bounds[i][1] = min(self.upper_bounds[i][1], self.upper_bounds[i + 1][1])
     
     def calculate_limits(self):
         if len(self.upper_bounds) == 0:
@@ -468,7 +468,11 @@ class ParetoFrontier:
     def draw_plans(self, G, filepath, filename, year=2020):
         ideal_population = sum(G.nodes[i]['TOTPOP'] for i in G.nodes) / len(self.plans[0])
         for (plan, upper_bound) in zip(self.plans, self.upper_bounds):
-            title = f"{round(upper_bound[0],2)}-person deviation ({round(100 * upper_bound[0] / ideal_population, 4)}%), {int(upper_bound[1]) if self.obj_names[1] == 'cut_edges' else round(upper_bound[1], 4)} {self.obj_names[1]}"
+            if self.senses[1] == 'min':
+                obj_val = upper_bound[1]
+            else:
+                obj_val = lower_bound[1]
+            title = f"{round(upper_bound[0],2)}-person deviation ({round(100 * upper_bound[0] / ideal_population, 4)}%), {int(obj_val) if self.obj_names[1] == 'cut_edges' else round(obj_val, 4)} {self.obj_names[1]}"
             draw_plan(filepath=filepath, filename=filename, G=G, plan=plan, title=title, year=year)
          
         
@@ -488,16 +492,23 @@ def filter_and_sort_pareto(plans, upper_bounds=None, lower_bounds=None, obj_type
     compactness_sense = 'max' if obj_type in ['bottleneck_Polsby_Popper', 'average_Polsby_Popper'] else 'min'
 
     # Sort plans by deviation and then compactness (descending if 'max')
-    scored_plans = [((upper_bounds[i][0], upper_bounds[i][1]), plans[i], lower_bounds[i]) for i in range(len(plans))]
+    if compactness_sense == 'max': 
+        scored_plans = [((lower_bounds[i][0], lower_bounds[i][1]), plans[i], upper_bounds[i]) for i in range(len(plans))]
+    else:
+        scored_plans = [((upper_bounds[i][0], upper_bounds[i][1]), plans[i], lower_bounds[i]) for i in range(len(plans))]
     scored_plans.sort(key=lambda x: (x[0][0], -x[0][1] if compactness_sense == 'max' else x[0][1]))    
     best_compactness = None
     
-    for (deviation, compactness_ub), plan, lb in scored_plans:
+    for (deviation, compactness), plan, b in scored_plans:
         if best_compactness is None or (
-            (compactness_ub > best_compactness) if compactness_sense == 'max' else (compactness_ub < best_compactness)):
-            best_compactness = compactness_ub
-            pareto_upper_bounds.append([deviation, compactness_ub])
-            pareto_lower_bounds.append(lb)
+            (compactness > best_compactness) if compactness_sense == 'max' else (compactness < best_compactness)):
+            best_compactness = compactness
+            if compactness_sense == 'min':
+                pareto_upper_bounds.append([deviation, compactness_b])
+                pareto_lower_bounds.append(b)
+            else:
+                pareto_upper_bounds.append(b)
+                pareto_lower_bounds.append([deviation, compactness])
             pareto_plans.append(plan)
 
     sorted_tuples = sorted(zip(pareto_upper_bounds, pareto_lower_bounds, pareto_plans), key=lambda x: x[0][0])
@@ -545,7 +556,7 @@ def plot_pareto_frontiers(G, method='epsilon_constraint_method', plans=None, obj
             else:
                 o2lim=[max(min_obj-1,0), max_obj+0.1]
 
-            pareto[obj_type].tighten_lower_bounds()
+            pareto[obj_type].tighten_bounds()
             pareto[obj_type].plot_with_custom_x_ranges(method=method, splits=None, o1lim=o1lim, o2lim=o2lim,
                                                                                      no_solution_region=no_solution_region)
             pareto[obj_type].draw_plans(G, filepath, filename2, year=year)
@@ -606,7 +617,7 @@ def plot_pareto_frontiers(G, method='epsilon_constraint_method', plans=None, obj
             extra_points = None
             extra_colors = None
         
-        pareto.tighten_lower_bounds()
+        pareto.tighten_bounds()
         
         # Determine y-axis limits
         upper_bounds = pareto.upper_bounds
