@@ -467,7 +467,7 @@ class ParetoFrontier:
     
     def draw_plans(self, G, filepath, filename, year=2020):
         ideal_population = sum(G.nodes[i]['TOTPOP'] for i in G.nodes) / len(self.plans[0])
-        for (plan, upper_bound) in zip(self.plans, self.upper_bounds):
+        for (plan, upper_bound, lower_bound) in zip(self.plans, self.upper_bounds, self.lower_bounds):
             if self.senses[1] == 'min':
                 obj_val = upper_bound[1]
             else:
@@ -478,7 +478,7 @@ class ParetoFrontier:
         
 def filter_and_sort_pareto(plans, upper_bounds=None, lower_bounds=None, obj_type='cut_edges'):
     if upper_bounds is None and lower_bounds is None:
-        raise ValueError("At least one of 'upper_bounds' or 'lower_bounds' must be provided.")
+        raise ValueError("At least one of 'upper_bounds' or 'lower_bounds' must be provided.") 
         
     # Fill in dummy values if only one set of bounds is provided
     if upper_bounds is None:
@@ -490,13 +490,16 @@ def filter_and_sort_pareto(plans, upper_bounds=None, lower_bounds=None, obj_type
     pareto_lower_bounds = list()
     pareto_plans = list()
     compactness_sense = 'max' if obj_type in ['bottleneck_Polsby_Popper', 'average_Polsby_Popper'] else 'min'
-
+    scored_plans = list()
+    
     # Sort plans by deviation and then compactness (descending if 'max')
     if compactness_sense == 'max': 
         scored_plans = [((lower_bounds[i][0], lower_bounds[i][1]), plans[i], upper_bounds[i]) for i in range(len(plans))]
     else:
         scored_plans = [((upper_bounds[i][0], upper_bounds[i][1]), plans[i], lower_bounds[i]) for i in range(len(plans))]
-    scored_plans.sort(key=lambda x: (x[0][0], -x[0][1] if compactness_sense == 'max' else x[0][1]))    
+    
+    scored_plans.sort(key=lambda x: (x[0][0], -x[0][1] if compactness_sense == 'max' else x[0][1])) 
+   
     best_compactness = None
     
     for (deviation, compactness), plan, b in scored_plans:
@@ -504,7 +507,7 @@ def filter_and_sort_pareto(plans, upper_bounds=None, lower_bounds=None, obj_type
             (compactness > best_compactness) if compactness_sense == 'max' else (compactness < best_compactness)):
             best_compactness = compactness
             if compactness_sense == 'min':
-                pareto_upper_bounds.append([deviation, compactness_b])
+                pareto_upper_bounds.append([deviation, compactness])
                 pareto_lower_bounds.append(b)
             else:
                 pareto_upper_bounds.append(b)
@@ -515,7 +518,7 @@ def filter_and_sort_pareto(plans, upper_bounds=None, lower_bounds=None, obj_type
     upper_bounds = [t[0] for t in sorted_tuples]
     lower_bounds = [t[1] for t in sorted_tuples]
     plans = [t[2] for t in sorted_tuples] 
-    return (upper_bounds, lower_bounds, plans)  
+    return (upper_bounds, lower_bounds, plans) 
 
 def plot_pareto_frontiers(G, method='epsilon_constraint_method', plans=None, obj_types='cut_edges', ideal_population=None, state=None, filepath=None, filename2=None, no_solution_region=None, year=None, result=None):
     max_deviation = 0.01 * ideal_population
