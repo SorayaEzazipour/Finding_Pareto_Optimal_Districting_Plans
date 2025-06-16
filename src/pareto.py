@@ -122,13 +122,14 @@ class ParetoFrontier:
         if extra_points:
             for i, ep in enumerate(extra_points):
                 deviation, objective_value, label = ep
-                color = extra_colors[i] if extra_colors else 'g'  # Default to red if no colors are provided
+                marker = extra_symbols[i]
+                size = symbol_sizes[marker]
                 ax.plot(
                     deviation,
                     objective_value,
-                    'o',
-                    color=color,
-                    markersize=10,
+                    marker,
+                    color='black',
+                    markersize=size,
                     label=label)
                 
                 # Optionally, add dashed lines for better visualization
@@ -268,14 +269,14 @@ class ParetoFrontier:
         plt.show()  
         
     def plot_with_custom_x_ranges(self, method='epsilon_constraint_method', splits=None, 
-                                  o1lim=None, o2lim=None, no_solution_region=None, extra_points=None, extra_colors=None):
+                                  o1lim=None, o2lim=None, no_solution_region=None, extra_points=None, extra_symbols=None, symbol_sizes=None):
         if len(self.upper_bounds) == 0:
             print("No points in the Pareto frontier.")
             return
     
         if splits is None:
             self.plot_with_gap_box(method=method, o1lim=o1lim, o2lim=o2lim,
-                                   no_solution_region=no_solution_region, extra_points=extra_points, extra_colors=extra_colors)
+                                   no_solution_region=no_solution_region, extra_points=extra_points, extra_symbols=extra_symbols, symbol_sizes=symbol_sizes)
             return
     
         splits = sorted(splits)
@@ -361,8 +362,9 @@ class ParetoFrontier:
                     x, y = pt[:2]
                     label = pt[2] if len(pt) == 3 else None
                     if lower_bounds[i] <= x <= upper_bounds[i]:
-                        color = extra_colors[idx] if extra_colors and idx < len(extra_colors) else 'green'
-                        ax.plot(x, y, 'o', color=color, label=label)
+                        marker = extra_symbols[idx]
+                        size = symbol_sizes[marker]
+                        ax.plot(x, y, marker=marker, s=size, color='black', label=label)
     
             ax.set_xlabel(self.obj_names[0])
             ax.grid(True, linestyle='--', alpha=0.7, color='lightgray')
@@ -592,27 +594,33 @@ def plot_pareto_frontiers(G, method='epsilon_constraint_method', plans=None, obj
             #2010 enacted map scores
             enacted_map_deviation = 3197.333333333372
             enacted_map_scores = {'inverse_Polsby_Popper': 7.75, 'cut_edges': 34.00, 
-                                      'perimeter': 42.12, 'average_Polsby_Popper': 0.14,'bottleneck_Polsby_Popper': 0.10}
+                                      'perimeter': 42.12, 'average_Polsby_Popper': 0.14, 'bottleneck_Polsby_Popper': 0.10}
+            #Facemire map scores
+            Facemire_map_deviation = 1523.6666666666279
+            Facemire_map_scores = {'inverse_Polsby_Popper': 5.49, 'cut_edges': 27.00, 
+                                      'perimeter': 35.96, 'average_Polsby_Popper': 0.18, 'bottleneck_Polsby_Popper': 0.18}
             # Cooper plan 1
             Cooper_plan_1_deviation = 323.66666666662786
             Cooper_plan_1_scores = {'inverse_Polsby_Popper': 7.31, 'cut_edges': 34.00, 
-                                      'perimeter': 40.53, 'average_Polsby_Popper': 0.17,'bottleneck_Polsby_Popper': 0.10}
+                                      'perimeter': 40.53, 'average_Polsby_Popper': 0.17, 'bottleneck_Polsby_Popper': 0.10}
             # Cooper plan 2
             Cooper_plan_2_deviation = 232.66666666662786
             Cooper_plan_2_scores = {'inverse_Polsby_Popper': 8.18, 'cut_edges': 36.00, 
-                                      'perimeter': 43.36, 'average_Polsby_Popper': 0.16,'bottleneck_Polsby_Popper': 0.09}
+                                      'perimeter': 43.36, 'average_Polsby_Popper': 0.16, 'bottleneck_Polsby_Popper': 0.09}
             # Cooper plan 3
             Cooper_plan_3_deviation = 115.66666666662786
             Cooper_plan_3_scores = {'inverse_Polsby_Popper': 7.25, 'cut_edges': 35.00, 
-                                      'perimeter': 40.65, 'average_Polsby_Popper': 0.16,'bottleneck_Polsby_Popper': 0.09}
+                                      'perimeter': 40.65, 'average_Polsby_Popper': 0.16, 'bottleneck_Polsby_Popper': 0.09}
             extra_points = [
-                (enacted_map_deviation,  enacted_map_scores[obj_names[1]], 'Enacted Map'),
+                (enacted_map_deviation,  enacted_map_scores[obj_names[1]], 'Enacted map'),
+                (Facemire_plan_deviation, Facemire_map_scores[obj_names[1]], 'Facemire map'),
                 (Cooper_plan_1_deviation,  Cooper_plan_1_scores[obj_names[1]] , 'Cooper plan 1'),
                 (Cooper_plan_2_deviation,  Cooper_plan_2_scores[obj_names[1]], 'Cooper plan 2'),
                 (Cooper_plan_3_deviation, Cooper_plan_3_scores[obj_names[1]], 'Cooper plan 3')]
     
-            #extra_colors: list of colors corresponding to the points in extra_points
-            extra_colors = ['r', 'g', 'c', 'y']  # Red, Green, Cyan, Yellow for each of the extra points
+            #extra_points_symbols: list of symbols corresponding to the points in extra_points
+            extra_symbols = ['+', '*', 'x', 's', '^']  # plus, star, x, square, upward triangle
+            symbol_sizes = {'+': 100, 'x': 100, '*': 120, 's': 70, '^': 70}
     
             for ep in extra_points:
                 print(f"The {ep[2]} has an objective value of {ep[1]} and a deviation of {ep[0]}.")
@@ -633,6 +641,6 @@ def plot_pareto_frontiers(G, method='epsilon_constraint_method', plans=None, obj
 
         pareto.plot_with_custom_x_ranges(method=method, splits=None, 
                                  o1lim=o1lim, o2lim=o2lim, no_solution_region = no_solution_region,
-                                 extra_points=extra_points, extra_colors=extra_colors)  
+                                 extra_points=extra_points, extra_sympols=extra_sympols, symbol_sizes=symbol_sizes)  
         pareto.draw_plans(G, filepath, filename2, year=year)
         
