@@ -207,13 +207,14 @@ class ParetoFrontier:
         if extra_points:
             for i, ep in enumerate(extra_points):
                 deviation, objective_value, label = ep
-                color = extra_colors[i] if extra_colors and i < len(extra_colors) else 'g'
+                marker = extra_symbols[i]
+                size = symbol_sizes[marker]
                 ax.plot(
                     deviation,
                     objective_value,
-                    'o',
-                    color=color,
-                    markersize=10,
+                    marker,
+                    color='black',
+                    markersize=size,
                     label=label)
             ax.legend(loc='best')
         
