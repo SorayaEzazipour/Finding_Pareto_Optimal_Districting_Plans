@@ -87,7 +87,7 @@ class ParetoFrontier:
         return max_deviation, min_deviation, max_objective, min_objective
     
     def plot(self, method = 'epsilon_constraint_method', o1lim=None, 
-             o2lim=None, no_solution_region=None, extra_points=None, extra_colors=None):
+             o2lim=None, no_solution_region=None, extra_symbols=None, symbol_sizes=None, extra_colors=None):
         
         if len(self.upper_bounds) == 0:
             print("No points in the Pareto frontier.")
@@ -124,11 +124,12 @@ class ParetoFrontier:
                 deviation, objective_value, label = ep
                 marker = extra_symbols[i]
                 size = symbol_sizes[marker]
+                color = extra_color[i]
                 ax.plot(
                     deviation,
                     objective_value,
                     marker,
-                    color='black',
+                    color=color,
                     markersize=size,
                     label=label)
                 
@@ -173,7 +174,8 @@ class ParetoFrontier:
         plt.show()
         
     def plot_with_gap_box(self, method = 'epsilon_constraint_method', 
-                          o1lim=None, o2lim=None, no_solution_region=None, extra_points=None, extra_colors=None):
+                          o1lim=None, o2lim=None, no_solution_region=None, extra_points=None, 
+                          extra_symbols=None, symbol_sizes=None, extra_colors=None):
         
         if len(self.upper_bounds) == 0:
             print("No points in the Pareto frontier.")
@@ -209,11 +211,12 @@ class ParetoFrontier:
                 deviation, objective_value, label = ep
                 marker = extra_symbols[i]
                 size = symbol_sizes[marker]
+                color = extra_colors[i]
                 ax.plot(
                     deviation,
                     objective_value,
                     marker,
-                    color='black',
+                    color=color,
                     markersize=size,
                     label=label)
             ax.legend(loc='best')
@@ -270,14 +273,16 @@ class ParetoFrontier:
         plt.show()  
         
     def plot_with_custom_x_ranges(self, method='epsilon_constraint_method', splits=None, 
-                                  o1lim=None, o2lim=None, no_solution_region=None, extra_points=None, extra_symbols=None, symbol_sizes=None):
+                                  o1lim=None, o2lim=None, no_solution_region=None, extra_points=None,
+                                  extra_symbols=None, symbol_sizes=None, extra_colors=None):
         if len(self.upper_bounds) == 0:
             print("No points in the Pareto frontier.")
             return
     
         if splits is None:
             self.plot_with_gap_box(method=method, o1lim=o1lim, o2lim=o2lim,
-                                   no_solution_region=no_solution_region, extra_points=extra_points, extra_symbols=extra_symbols, symbol_sizes=symbol_sizes)
+                                   no_solution_region=no_solution_region, extra_points=extra_points,
+                                 extra_symbols=extra_symbols, symbol_sizes=symbol_sizes, extra_colors=extra_colors)
             return
     
         splits = sorted(splits)
@@ -365,7 +370,8 @@ class ParetoFrontier:
                     if lower_bounds[i] <= x <= upper_bounds[i]:
                         marker = extra_symbols[idx]
                         size = symbol_sizes[marker]
-                        ax.plot(x, y, marker=marker, s=size, color='black', label=label)
+                        color = extra_color[idx]
+                        ax.plot(x, y, marker=marker, s=size, color=color, label=label)
     
             ax.set_xlabel(self.obj_names[0])
             ax.grid(True, linestyle='--', alpha=0.7, color='lightgray')
@@ -614,14 +620,15 @@ def plot_pareto_frontiers(G, method='epsilon_constraint_method', plans=None, obj
                                       'perimeter': 40.65, 'average_Polsby_Popper': 0.16, 'bottleneck_Polsby_Popper': 0.09}
             extra_points = [
                 (enacted_map_deviation,  enacted_map_scores[obj_names[1]], 'Enacted map'),
-                (Facemire_plan_deviation, Facemire_map_scores[obj_names[1]], 'Facemire map'),
+                (Facemire_map_deviation, Facemire_map_scores[obj_names[1]], 'Facemire map'),
                 (Cooper_plan_1_deviation,  Cooper_plan_1_scores[obj_names[1]] , 'Cooper plan 1'),
                 (Cooper_plan_2_deviation,  Cooper_plan_2_scores[obj_names[1]], 'Cooper plan 2'),
                 (Cooper_plan_3_deviation, Cooper_plan_3_scores[obj_names[1]], 'Cooper plan 3')]
     
             #extra_points_symbols: list of symbols corresponding to the points in extra_points
             extra_symbols = ['+', '*', 'x', 's', '^']  # plus, star, x, square, upward triangle
-            symbol_sizes = {'+': 100, 'x': 100, '*': 120, 's': 70, '^': 70}
+            symbol_sizes = {'+': 10, 'x': 8, '*': 14, 's': 7, '^': 7}
+            extra_colors = ['darkred', 'darkgreen', 'dimgray', 'purple', 'darkorange']
     
             for ep in extra_points:
                 print(f"The {ep[2]} has an objective value of {ep[1]} and a deviation of {ep[0]}.")
@@ -642,6 +649,7 @@ def plot_pareto_frontiers(G, method='epsilon_constraint_method', plans=None, obj
 
         pareto.plot_with_custom_x_ranges(method=method, splits=None, 
                                  o1lim=o1lim, o2lim=o2lim, no_solution_region = no_solution_region,
-                                 extra_points=extra_points, extra_sympols=extra_sympols, symbol_sizes=symbol_sizes)  
+                                 extra_points=extra_points, extra_symbols=extra_symbols, 
+                                         symbol_sizes=symbol_sizes, extra_colors=extra_colors)  
         pareto.draw_plans(G, filepath, filename2, year=year)
         
