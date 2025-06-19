@@ -529,7 +529,7 @@ def filter_and_sort_pareto(plans, upper_bounds=None, lower_bounds=None, obj_type
     plans = [t[2] for t in sorted_tuples] 
     return (upper_bounds, lower_bounds, plans) 
 
-def plot_pareto_frontiers(G, method='epsilon_constraint_method', plans=None, obj_types='cut_edges', ideal_population=None, state=None, filepath=None, filename2=None, no_solution_region=None, year=None, result=None):
+def plot_pareto_frontiers(G, method='epsilon_constraint_method', plans=None, obj_types='cut_edges', ideal_population=None, state=None, filepath=None, filename2=None, no_solution_region=None, year=None, result=None, special_maps_scores=None):
     max_deviation = 0.01 * ideal_population
     # Determine x-axis limits
     o1lim = [-0.025*max_deviation, max_deviation]
@@ -597,38 +597,17 @@ def plot_pareto_frontiers(G, method='epsilon_constraint_method', plans=None, obj
     
          #extra_points: list of tuples, each containing (deviation, objective_value, label)
         if  year == 2010 and state == 'WV':
-    
-            #2010 enacted map scores
-            enacted_map_deviation = 3197.333333333372
-            enacted_map_scores = {'inverse_Polsby_Popper': 7.75, 'cut_edges': 34.00, 
-                                      'perimeter': 42.12, 'average_Polsby_Popper': 0.14, 'bottleneck_Polsby_Popper': 0.10}
-            #Facemire map scores
-            Facemire_map_deviation = 1523.6666666666279
-            Facemire_map_scores = {'inverse_Polsby_Popper': 5.49, 'cut_edges': 27.00, 
-                                      'perimeter': 35.96, 'average_Polsby_Popper': 0.18, 'bottleneck_Polsby_Popper': 0.18}
-            # Cooper plan 1
-            Cooper_plan_1_deviation = 323.66666666662786
-            Cooper_plan_1_scores = {'inverse_Polsby_Popper': 7.31, 'cut_edges': 34.00, 
-                                      'perimeter': 40.53, 'average_Polsby_Popper': 0.17, 'bottleneck_Polsby_Popper': 0.10}
-            # Cooper plan 2
-            Cooper_plan_2_deviation = 232.66666666662786
-            Cooper_plan_2_scores = {'inverse_Polsby_Popper': 8.18, 'cut_edges': 36.00, 
-                                      'perimeter': 43.36, 'average_Polsby_Popper': 0.16, 'bottleneck_Polsby_Popper': 0.09}
-            # Cooper plan 3
-            Cooper_plan_3_deviation = 115.66666666662786
-            Cooper_plan_3_scores = {'inverse_Polsby_Popper': 7.25, 'cut_edges': 35.00, 
-                                      'perimeter': 40.65, 'average_Polsby_Popper': 0.16, 'bottleneck_Polsby_Popper': 0.09}
-            extra_points = [
-                (enacted_map_deviation,  enacted_map_scores[obj_names[1]], 'Enacted map'),
-                (Facemire_map_deviation, Facemire_map_scores[obj_names[1]], 'Facemire map'),
-                (Cooper_plan_1_deviation,  Cooper_plan_1_scores[obj_names[1]] , 'Cooper plan 1'),
-                (Cooper_plan_2_deviation,  Cooper_plan_2_scores[obj_names[1]], 'Cooper plan 2'),
-                (Cooper_plan_3_deviation, Cooper_plan_3_scores[obj_names[1]], 'Cooper plan 3')]
-    
+            extra_points = list()
+            for p in special_maps_scores.keys(): 
+                extra_points.append((
+                    special_maps_scores[p][0],                # deviation
+                    special_maps_scores[p][1][obj_names[1]],  # objective score
+                    p ))                                        # map key (label)
+                
             #extra_points_symbols: list of symbols corresponding to the points in extra_points
-            extra_symbols = ['+', '*', 'x', 's', '^']  # plus, star, x, square, upward triangle
-            symbol_sizes = {'+': 10, 'x': 8, '*': 14, 's': 7, '^': 7}
-            extra_colors = ['darkred', 'darkgreen', 'dimgray', 'purple', 'darkorange']
+            extra_symbols = ['h', 'v', 'o', 's', '^']  # plus, star, x, square, upward triangle
+            symbol_sizes = {'h': 8, 'o': 8, 'v': 8, 's': 8, '^': 8}
+            extra_colors = ['darkgreen', 'red', 'dimgray', 'purple', 'orange']
     
             for ep in extra_points:
                 print(f"The {ep[2]} has an objective value of {ep[1]} and a deviation of {ep[0]}.")
