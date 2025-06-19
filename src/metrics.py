@@ -11,6 +11,8 @@ import networkx as nx
 import os
 import sys
 from pathlib import Path
+from read import read_graph_from_json
+import pandas as pd
 
 # Includes functions for calculating metrics like compactness, deviation, etc
 def label(plan):
@@ -209,3 +211,71 @@ def save_plans(plans, state, year=2020):
     filename = f"{state}_plans_{year}.py"
     with open(filename, "w") as f:
         f.write(f"plans = {repr(plans)}\n")
+        
+
+def county_level_districts(G,csv_file_path, filepath, filename, state, k, year=2010):
+    
+    fips_state_codes = {
+    'AL': '01', 'AK': '02', 'AZ': '04', 'AR': '05', 'CA': '06', 
+    'CO': '08', 'CT': '09', 'DE': '10', 'DC': '11', 'FL': '12', 
+    'GA': '13', 'HI': '15', 'ID': '16', 'IL': '17', 'IN': '18', 
+    'IA': '19', 'KS': '20', 'KY': '21', 'LA': '22', 'ME': '23', 
+    'MD': '24', 'MA': '25', 'MI': '26', 'MN': '27', 'MS': '28', 
+    'MO': '29', 'MT': '30', 'NE': '31', 'NV': '32', 'NH': '33', 
+    'NJ': '34', 'NM': '35', 'NY': '36', 'NC': '37', 'ND': '38', 
+    'OH': '39', 'OK': '40', 'OR': '41', 'PA': '42', 'RI': '44', 
+    'SC': '45', 'SD': '46', 'TN': '47', 'TX': '48', 'UT': '49', 
+    'VT': '50', 'VA': '51', 'WA': '53', 'WV': '54', 'WI': '55', 
+    'WY': '56', 'AS': '60', 'GU': '66', 'MP': '69', 'PR': '72', 
+    'UM': '74', 'VI': '78'}
+    
+    G_block = read_graph_from_json(state, filepath + filename, year=year)
+    
+    if year==2020:
+        GEOID = 'GEOID'
+        county_GEOID = 'GEOID20'
+        county = 'COUNTYFP20'
+    else:
+        GEOID = 'geoid'
+        county_GEOID = 'GEOID10'
+        county = 'COUNTYFP10'
+        
+    # Read the CSV file
+    block_assignment_df = pd.read_csv(csv_file_path)
+
+    # Store block assignments as a dictionary
+    labeling = {str(row[0]).zfill(15): row[1] for _, row in block_assignment_df.iterrows()}
+    
+    # Map GEOID to COUNTY in the graph
+    node_with_this_geoid = {G_block.nodes[i][ GEOID ]: G_block.nodes[i][ county ] for i in G_block.nodes}
+
+    # Find common keys between labeling and node_with_this_geoid
+    common_keys = set(labeling) & set(node_with_this_geoid)
+    common_values_dict = {key: (labeling[key], node_with_this_geoid[key]) for key in common_keys}
+
+    # Group counties by district
+    grouped_dict = {}
+    for key, (labeling_value, node_with_this_geoid_value) in common_values_dict.items():
+        if labeling_value not in grouped_dict:
+            grouped_dict[labeling_value] = [node_with_this_geoid_value]
+        else:
+            grouped_dict[labeling_value].append(node_with_this_geoid_value)
+
+    # Ensure unique counties within each district
+    Districts = {labeling_value: list(set(values)) for labeling_value, values in grouped_dict.items()}
+
+    # Step 10: Create county-level district list
+    counties_GEOID_district_list = [
+        [str(fips_state_codes[state]) + value for value in inner_list] for inner_list in Districts.values()
+    ]
+
+    #enacted district assignments
+    enacted_districts = [[] for _ in range(k)]
+
+    for i in G.nodes:
+        for j in range(k):
+            if G.nodes[i][ county_GEOID ] in counties_GEOID_district_list[j]:
+                enacted_districts[j].append(i)
+
+    return counties_GEOID_district_list, enacted_districts
+
