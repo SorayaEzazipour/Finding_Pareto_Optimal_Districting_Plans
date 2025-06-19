@@ -213,69 +213,35 @@ def save_plans(plans, state, year=2020):
         f.write(f"plans = {repr(plans)}\n")
         
 
-def county_level_districts(G,csv_file_path, filepath, filename, state, k, year=2010):
+def county_level_districts(G, plan_name, k):
     
-    fips_state_codes = {
-    'AL': '01', 'AK': '02', 'AZ': '04', 'AR': '05', 'CA': '06', 
-    'CO': '08', 'CT': '09', 'DE': '10', 'DC': '11', 'FL': '12', 
-    'GA': '13', 'HI': '15', 'ID': '16', 'IL': '17', 'IN': '18', 
-    'IA': '19', 'KS': '20', 'KY': '21', 'LA': '22', 'ME': '23', 
-    'MD': '24', 'MA': '25', 'MI': '26', 'MN': '27', 'MS': '28', 
-    'MO': '29', 'MT': '30', 'NE': '31', 'NV': '32', 'NH': '33', 
-    'NJ': '34', 'NM': '35', 'NY': '36', 'NC': '37', 'ND': '38', 
-    'OH': '39', 'OK': '40', 'OR': '41', 'PA': '42', 'RI': '44', 
-    'SC': '45', 'SD': '46', 'TN': '47', 'TX': '48', 'UT': '49', 
-    'VT': '50', 'VA': '51', 'WA': '53', 'WV': '54', 'WI': '55', 
-    'WY': '56', 'AS': '60', 'GU': '66', 'MP': '69', 'PR': '72', 
-    'UM': '74', 'VI': '78'}
+    counties_GEOID_district_list = list()
     
-    G_block = read_graph_from_json(state, filepath + filename, year=year)
-    
-    if year==2020:
-        GEOID = 'GEOID'
-        county_GEOID = 'GEOID20'
-        county = 'COUNTYFP20'
-    else:
-        GEOID = 'geoid'
-        county_GEOID = 'GEOID10'
-        county = 'COUNTYFP10'
+    district_plans = {
+        'Enacted Plan': [['54071', '54083', '54079', '54065', '54037', '54003', '54039', '54097', '54035', '54007', '54013', '54031', '54087', '54041', '54105', '54015', '54027'], ['54053', '54109', '54055', '54045', '54047', '54043', '54011', '54081', '54075', '54089', '54099', '54067', '54101', '54025', '54063', '54019', '54005', '54059'], ['54069', '54023', '54091', '54095', '54001', '54009', '54021', '54107', '54085', '54061', '54049', '54103', '54033', '54093', '54029', '54077', '54073', '54017', '54057', '54051']],
         
-    # Read the CSV file
-    block_assignment_df = pd.read_csv(csv_file_path)
-
-    # Store block assignments as a dictionary
-    labeling = {str(row[0]).zfill(15): row[1] for _, row in block_assignment_df.iterrows()}
+        'Facemire Plan': [['54069', '54035', '54007', '54095', '54009', '54021', '54107', '54085', '54079', '54039', '54087', '54103', '54013', '54029', '54041', '54105', '54015', '54073', '54051'], ['54053', '54109', '54055', '54045', '54047', '54043', '54011', '54081', '54075', '54089', '54099', '54067', '54101', '54025', '54063', '54019', '54005', '54059'], ['54071', '54083', '54023', '54065', '54037', '54033', '54097', '54003', '54017', '54093', '54061', '54091', '54001', '54049', '54031', '54057', '54077', '54027']],
+        
+        'Cooper Plan 1': [['54069', '54035', '54095', '54009', '54021', '54107', '54085', '54011', '54061', '54087', '54103', '54013', '54099', '54029', '54041', '54105', '54015', '54053', '54073', '54051'], ['54071', '54065', '54023', '54003', '54097', '54091', '54007', '54089', '54001', '54025', '54057', '54027', '54049', '54101', '54083', '54033', '54093', '54077', '54037', '54017', '54031', '54063', '54075'], ['54045', '54109', '54055', '54079', '54047', '54043', '54039', '54081', '54067', '54059', '54019', '54005']],
+        
+        'Cooper Plan 2': [['54097', '54035', '54091', '54007', '54089', '54025', '54021', '54107', '54085', '54011', '54049', '54101', '54087', '54033', '54013', '54099', '54041', '54105', '54015', '54053', '54063', '54075'], ['54045', '54109', '54055', '54079', '54047', '54043', '54039', '54081', '54067', '54059', '54019', '54005'], ['54069', '54071', '54065', '54023', '54003', '54095', '54001', '54009', '54027', '54061', '54083', '54103', '54093', '54029', '54077', '54073', '54037', '54017', '54031', '54057', '54051']],
+        
+        'Cooper Plan 3': [['54097', '54081', '54091', '54007', '54089', '54067', '54025', '54021', '54045', '54055', '54019', '54049', '54101', '54059', '54033', '54013', '54041', '54109', '54047', '54063', '54075'], ['54053', '54085', '54079', '54043', '54005', '54039', '54035', '54011', '54099', '54087', '54107', '54105', '54015'], ['54069', '54071', '54065', '54023', '54003', '54095', '54001', '54009', '54027', '54061', '54083', '54103', '54093', '54029', '54077', '54073', '54037', '54017', '54031', '54057', '54051']],
+           }
     
-    # Map GEOID to COUNTY in the graph
-    node_with_this_geoid = {G_block.nodes[i][ GEOID ]: G_block.nodes[i][ county ] for i in G_block.nodes}
+    if plan_name not in district_plans:
+        raise ValueError(f"Unknown plan name: {plan_name}")
+    
+    counties_GEOID_district_list = district_plans[plan_name]
 
-    # Find common keys between labeling and node_with_this_geoid
-    common_keys = set(labeling) & set(node_with_this_geoid)
-    common_values_dict = {key: (labeling[key], node_with_this_geoid[key]) for key in common_keys}
-
-    # Group counties by district
-    grouped_dict = {}
-    for key, (labeling_value, node_with_this_geoid_value) in common_values_dict.items():
-        if labeling_value not in grouped_dict:
-            grouped_dict[labeling_value] = [node_with_this_geoid_value]
-        else:
-            grouped_dict[labeling_value].append(node_with_this_geoid_value)
-
-    # Ensure unique counties within each district
-    Districts = {labeling_value: list(set(values)) for labeling_value, values in grouped_dict.items()}
-
-    # Step 10: Create county-level district list
-    counties_GEOID_district_list = [
-        [str(fips_state_codes[state]) + value for value in inner_list] for inner_list in Districts.values()
-    ]
-
-    #enacted district assignments
+    # Initialize node-based district lists
     enacted_districts = [[] for _ in range(k)]
 
     for i in G.nodes:
         for j in range(k):
-            if G.nodes[i][ county_GEOID ] in counties_GEOID_district_list[j]:
+            if G.nodes[i]['GEOID10'] in counties_GEOID_district_list[j]:
                 enacted_districts[j].append(i)
+                break  # prevent adding to multiple districts
 
-    return counties_GEOID_district_list, enacted_districts
+    return enacted_districts
 

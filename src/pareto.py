@@ -529,7 +529,7 @@ def filter_and_sort_pareto(plans, upper_bounds=None, lower_bounds=None, obj_type
     plans = [t[2] for t in sorted_tuples] 
     return (upper_bounds, lower_bounds, plans) 
 
-def plot_pareto_frontiers(G, method='epsilon_constraint_method', plans=None, obj_types='cut_edges', ideal_population=None, state=None, filepath=None, filename2=None, no_solution_region=None, year=None, result=None, special_maps_scores=None):
+def plot_pareto_frontiers(G, method='epsilon_constraint_method', plans=None, obj_types='cut_edges', ideal_population=None, state=None, filepath=None, filename2=None, no_solution_region=None, year=None, result=None, special_plans_scores=None):
     max_deviation = 0.01 * ideal_population
     # Determine x-axis limits
     o1lim = [-0.025*max_deviation, max_deviation]
@@ -598,10 +598,10 @@ def plot_pareto_frontiers(G, method='epsilon_constraint_method', plans=None, obj
          #extra_points: list of tuples, each containing (deviation, objective_value, label)
         if  year == 2010 and state == 'WV':
             extra_points = list()
-            for p in special_maps_scores.keys(): 
+            for p in special_plans_scores.keys(): 
                 extra_points.append((
-                    special_maps_scores[p][0],                # deviation
-                    special_maps_scores[p][1][obj_names[1]],  # objective score
+                    special_plans_scores[p][0],                # deviation
+                    special_plans_scores[p][1][obj_names[1]],  # objective score
                     p ))                                        # map key (label)
                 
             #extra_points_symbols: list of symbols corresponding to the points in extra_points
