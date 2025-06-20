@@ -165,7 +165,7 @@ def labeling_model(G, deviation_persons, obj_type, contiguity='lcut', cutoff=Non
             
     #add similarity constraint if needed
     if similarity is not None:
-        m.addConstr(sum(G.nodes[i]["TOTPOP2000"] * m._x[i, j] 
+        m.addConstr(sum(G.nodes[i]["TOTPOP"] * m._x[i, j] 
                         for j in range(G._k) for i in similarity[0][j]) >= similarity[1])
   
     if cutoff is not None:
