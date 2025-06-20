@@ -477,12 +477,14 @@ class ParetoFrontier:
     def draw_plans(self, G, filepath, filename, year=2020, similarity=None):
         ideal_population = sum(G.nodes[i]['TOTPOP'] for i in G.nodes) / len(self.plans[0])
         for (plan, upper_bound, lower_bound) in zip(self.plans, self.upper_bounds, self.lower_bounds):
+            
             if self.senses[1] == 'min':
                 obj_val = upper_bound[1]
             else:
                 obj_val = lower_bound[1]
+            
             title = f"{round(upper_bound[0],2)}-person deviation ({round(100 * upper_bound[0] / ideal_population, 4)}%), {int(obj_val) if self.obj_names[1] == 'cut_edges' else round(obj_val, 4)} {self.obj_names[1]}"
-
+            
             if similarity:
                 similarity_score = stay_in_old_districts(G, plan, similarity[0])
                 title += f", similarity score {similarity_score}"
@@ -534,7 +536,8 @@ def filter_and_sort_pareto(plans, upper_bounds=None, lower_bounds=None, obj_type
     plans = [t[2] for t in sorted_tuples] 
     return (upper_bounds, lower_bounds, plans) 
 
-def plot_pareto_frontiers(G, method='epsilon_constraint_method', plans=None, obj_types='cut_edges', ideal_population=None, state=None, filepath=None, filename2=None, no_solution_region=None, year=None, result=None, special_plans_scores=None, similarity=None):    max_deviation = 0.01 * ideal_population
+def plot_pareto_frontiers(G, method='epsilon_constraint_method', plans=None, obj_types='cut_edges', ideal_population=None, state=None, filepath=None, filename2=None, no_solution_region=None, year=None, result=None, special_plans_scores=None, similarity=None):
+    max_deviation = 0.01 * ideal_population
     # Determine x-axis limits
     o1lim = [-0.025*max_deviation, max_deviation]
     
@@ -634,6 +637,5 @@ def plot_pareto_frontiers(G, method='epsilon_constraint_method', plans=None, obj
                                  o1lim=o1lim, o2lim=o2lim, no_solution_region = no_solution_region,
                                  extra_points=extra_points, extra_symbols=extra_symbols, 
                                          symbol_sizes=symbol_sizes, extra_colors=extra_colors)  
-         pareto.draw_plans(G, filepath, filename2, year=year, similarity=similarity)
-
+        pareto.draw_plans(G, filepath, filename2, year=year, similarity=similarity)
         
