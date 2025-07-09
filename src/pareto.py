@@ -278,127 +278,155 @@ class ParetoFrontier:
         if len(self.upper_bounds) == 0:
             print("No points in the Pareto frontier.")
             return
-    
+
         if splits is None:
             self.plot_with_gap_box(method=method, o1lim=o1lim, o2lim=o2lim,
                                    no_solution_region=no_solution_region, extra_points=extra_points,
-                                 extra_symbols=extra_symbols, symbol_sizes=symbol_sizes, extra_colors=extra_colors)
+                                   extra_symbols=extra_symbols, symbol_sizes=symbol_sizes, extra_colors=extra_colors)
             return
-    
+
         splits = sorted(splits)
+        split_bounds = [-float("inf")] + splits + [float("inf")]
         figsize = (5 * (len(splits) + 1), 5)
         num_panels = len(splits) + 1
         fig, axes = plt.subplots(1, num_panels, figsize=figsize, sharey=True)
-    
-        if method == 'epsilon_constraint_method':
-            fig.suptitle("Restricted Value Function")
-        if method =='heuristic':
-            fig.suptitle("Restricted Value Function (estimated)")
-    
+
+        fig.suptitle("Restricted Value Function" if method == 'epsilon_constraint_method' else "Restricted Value Function (estimated)")
+
         if num_panels == 1:
             axes = [axes]
-        rightmost_x = max(max(p[0] for p in self.upper_bounds), 
-                          max((pt[0] for pt in extra_points), default=0) if extra_points else 0)
-    
+
+        rightmost_x = max(
+            max((p[0] for p in self.upper_bounds), default=0),
+            max((pt[0] for pt in extra_points), default=0) if extra_points else 0,
+            o1lim[1] if o1lim else 0
+        )
+        
+
         last_points = [None] * num_panels
         first_points = [None] * num_panels
-    
+
+        self.upper_bounds.sort(key=lambda x: x[0])
+        self.lower_bounds.sort(key=lambda x: x[0] if x is not None else float('inf'))
+
         for i in range(len(self.upper_bounds)):
             current_dev = self.upper_bounds[i][0]
             current_upper = self.upper_bounds[i][1]
-            if i == 0 and current_dev != 0:
-                current_dev = 0
             current_lower = self.lower_bounds[i][1] if self.lower_bounds[i] is not None else current_upper
-    
+
+            for panel_index in range(num_panels):
+                lo = split_bounds[panel_index]
+                hi = split_bounds[panel_index + 1]
+                if lo < current_dev <= hi:
+                    break
+
             next_dev = self.upper_bounds[i + 1][0] if i < len(self.upper_bounds) - 1 else rightmost_x
+            
             rect_width = round(next_dev - current_dev, 2)
             rect_height = abs(current_upper - current_lower)
-    
-            for j, threshold in enumerate(splits):
-                if current_dev < threshold:
-                    panel_index = j
-                    break
-            else:
-                panel_index = num_panels - 1
-    
             ax = axes[panel_index]
-    
+
             if first_points[panel_index] is None:
-                first_points[panel_index] = (current_dev, current_upper)
-            last_points[panel_index] = (current_dev, current_upper)
-    
+                first_points[panel_index] = (current_dev, current_lower, rect_height)
+            last_points[panel_index] = (current_dev, current_upper, rect_height)
+
             if rect_height > 1e-7:
-                rect = patches.Rectangle((current_dev, current_lower), rect_width, rect_height, color='r', alpha=0.3)
+                rect = patches.Rectangle((current_dev, current_lower), rect_width, rect_height,
+                                         color='r', alpha=0.3, linewidth=0)
                 ax.add_patch(rect)
             else:
                 ax.plot(current_dev, current_upper, 'bo', markersize=6)
-                next_panel = next((jj for jj, t in enumerate(splits) if next_dev < t), num_panels - 1)
-                if panel_index == next_panel:
+                if i < len(self.upper_bounds) - 1:
                     ax.plot([current_dev, next_dev], [current_upper, current_upper], 'b-', linewidth=1.5)
                     ax.plot(next_dev, current_upper, 'bo', markerfacecolor='white', markersize=6)
                 else:
-                    ax.plot([current_dev, rightmost_x], [current_upper, current_upper], 'b-', linewidth=1.5)
-    
+                     ax.plot([current_dev, rightmost_x], [current_upper, current_upper], 'b-', linewidth=1.5)
+        
         for i in range(num_panels - 1):
             if last_points[i] and first_points[i + 1]:
-                axes[i + 1].plot([last_points[i][0], first_points[i + 1][0]],
-                                 [last_points[i][1], last_points[i][1]], 'b-', linewidth=1.2)
-                axes[i + 1].plot(first_points[i + 1][0], last_points[i][1], 'bo', markerfacecolor='white', markersize=6)
-    
-        lower_bounds = [-0.01 * rightmost_x] + splits
-        upper_bounds = splits + [1.05 * rightmost_x]
-    
+                x1, y1, h1 = last_points[i]
+                x2, y2, h2 = first_points[i + 1]
+
+                if abs(h1) > 1e-7 and abs(h2) > 1e-7:
+                    # Red rectangle bridge
+                    height = abs(y1 - y2)
+                    lower = min(y1, y2)
+                    width = x2 - x1
+                    if width > 0 and height > 1e-7:
+                        rect = patches.Rectangle((x1, lower), width, height, color='r', alpha=0.3, linewidth=0)
+                        axes[i + 1].add_patch(rect)
+                   
+                else:
+                    # Blue horizontal line bridge
+                    axes[i + 1].plot([x1, x2], [y1, y1], 'b-', linewidth=1.2)
+                    axes[i + 1].plot(x2, y1, 'bo', markerfacecolor='white', markersize=6)
+
         y_min = min(min(lb[1] for lb in self.lower_bounds if lb), min(ub[1] for ub in self.upper_bounds)) * 0.95
         y_max = max(max(ub[1] for ub in self.upper_bounds), max(lb[1] for lb in self.lower_bounds if lb)) * 1.05
-    
+
         for i, ax in enumerate(axes):
-            ax.set_xlim(lower_bounds[i], upper_bounds[i])
-            if o1lim:
-                ax.set_xlim(o1lim)
-            if o2lim:
-                ax.set_ylim(o2lim)
+            if i == 0:
+                x_lo = -1
+                x_hi = splits[0]
+                if no_solution_region is not None:
+                    ax.fill_betweenx(
+                        y=[o2lim[0], o2lim[1]],
+                        x1=no_solution_region[0],
+                        x2=no_solution_region[1],
+                        color='none',
+                        alpha=0.3,
+                        hatch='X',
+                        edgecolor='red',
+                        linewidth=0.5)
+            elif i == len(axes) - 1:
+                x_lo = splits[-1]
+                x_hi = o1lim[1]
             else:
-                ax.set_ylim(y_min, y_max)
-    
-            if no_solution_region:
-                ax.axhspan(no_solution_region[0], no_solution_region[1], facecolor='gray', alpha=0.2)
-    
+                x_lo = splits[i - 1]
+                x_hi = splits[i]
+
+            ax.set_xlim(x_lo, x_hi)
+            ax.set_ylim(o2lim if o2lim else (y_min, y_max))
+
+            if no_solution_region and i == 0:
+                ax.fill_betweenx(
+                    y=[o2lim[0], o2lim[1]],
+                    x1=no_solution_region[0],
+                    x2=no_solution_region[1],
+                    color='none',
+                    alpha=0.3,
+                    hatch='X',
+                    edgecolor='red',
+                    linewidth=0.5)
+
             if extra_points:
-                for idx, pt in enumerate(extra_points):
-                    x, y = pt[:2]
-                    label = pt[2] if len(pt) == 3 else None
-                    if lower_bounds[i] <= x <= upper_bounds[i]:
-                        marker = extra_symbols[idx]
+                for j, ep in enumerate(extra_points):
+                    deviation, objective_value, label = ep
+                    if x_lo <= deviation <= x_hi:
+                        marker = extra_symbols[j]
                         size = symbol_sizes[marker]
-                        color = extra_color[idx]
-                        ax.plot(x, y, marker=marker, s=size, color=color, label=label)
-    
+                        color = extra_colors[j]
+                        ax.plot(deviation, objective_value, marker, color=color, markersize=size)
+
             ax.set_xlabel(self.obj_names[0])
             ax.grid(True, linestyle='--', alpha=0.7, color='lightgray')
-    
+
             yticks = ax.get_yticks()
             if len(yticks) >= 2:
-                y_min, y_max = ax.get_ylim()
-                y_range = (y_max - y_min)/len(yticks)
-                new_last_tick = y_max + y_range  
-            
-               
-                yticks[-1] = new_last_tick
-                labels = list()
-            
-                for y in yticks:
-                    if abs(y) < 1:
-                        labels.append(f"{y:.2f}")  
-                    else:
-                        labels.append(str(int(y)))  
-            ax.set_yticks(yticks)
-            ax.set_yticklabels(labels)
+                y_min_tick, y_max_tick = ax.get_ylim()
+                y_range = (y_max_tick - y_min_tick) / len(yticks)
+                new_last_tick = y_max_tick + y_range
+                yticks = np.append(yticks[:-1], new_last_tick)
+                labels = [f"{y:.2f}" if abs(y) < 1 else str(int(y)) for y in yticks]
+                ax.set_yticks(yticks)
+                ax.set_yticklabels(labels)
 
-    
         axes[0].set_ylabel(self.obj_names[1])
         plt.tight_layout()
         plt.subplots_adjust(wspace=0.1)
         plt.show()
+
+
 
     def plot_with_dominance(self, frontiers, labels, colors, markers):
         if len(self.upper_bounds) == 0:
