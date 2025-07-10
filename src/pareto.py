@@ -649,6 +649,8 @@ def plot_pareto_frontiers(G, method='epsilon_constraint_method', plans=None, obj
         else:
             extra_points = None
             extra_colors = None
+            extra_symbols = None
+            symbol_sizes = None
         
         pareto.tighten_bounds()
         
